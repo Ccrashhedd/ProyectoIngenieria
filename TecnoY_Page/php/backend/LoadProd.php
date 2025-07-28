@@ -69,15 +69,13 @@ try {
             ];
         }
         
-        // Solo agregar categorías que tienen productos
-        if (!empty($productos)) {
-            $resultado[] = [
-                'id' => $categoria['idCategoria'],
-                'nombre' => $categoria['nombCategoria'],
-                'imagen' => $categoria['imagen'],
-                'productos' => $productos
-            ];
-        }
+        // Agregar todas las categorías (con o sin productos)
+        $resultado[] = [
+            'id' => $categoria['idCategoria'],
+            'nombre' => $categoria['nombCategoria'],
+            'imagen' => $categoria['imagen'],
+            'productos' => $productos
+        ];
     }
     
     // Enviar respuesta JSON

@@ -226,6 +226,33 @@ select.form-input option {
     gap: 4px;
 }
 
+/* Botones de acción de productos */
+.product-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.product-actions .btn {
+    padding: 8px 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+}
+
+.product-actions .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
 /* Listado de productos */
 .productos-list {
     list-style: none;
@@ -369,6 +396,45 @@ html {
 .footer-content p:first-child {
     color: var(--primary-color);
     font-weight: 600;
+}
+
+/* Alertas y mensajes */
+.alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 16px 0;
+    font-size: 0.95rem;
+    border: 1px solid;
+    animation: slideInAlert 0.3s ease;
+}
+
+@keyframes slideInAlert {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert-success {
+    background: rgba(46, 213, 115, 0.1);
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.alert-danger {
+    background: rgba(255, 71, 87, 0.1);
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
+
+.alert-info {
+    background: rgba(0, 102, 255, 0.1);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 /* Responsive */

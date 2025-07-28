@@ -43,31 +43,39 @@ try {
         unlink("../../../../" . $categoria['imagen']);
     }
     
-    // Si viene desde el frontend (GET), redirigir
-    if (isset($_GET['id'])) {
+    // Verificar si es una petición AJAX
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+              strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    // Si es AJAX o no tiene el header referer, devolver JSON
+    if ($isAjax || !isset($_SERVER['HTTP_REFERER'])) {
+        echo json_encode([
+            'success' => true,
+            'mensaje' => 'Categoría eliminada exitosamente'
+        ], JSON_UNESCAPED_UNICODE);
+    } else {
+        // Si viene desde el frontend (navegación directa), redirigir
         header("Location: ../../frontend/categorias.php?deleted=1");
         exit;
     }
     
-    // Si es AJAX (POST), devolver JSON
-    echo json_encode([
-        'success' => true,
-        'mensaje' => 'Categoría eliminada exitosamente'
-    ], JSON_UNESCAPED_UNICODE);
-    
 } catch (Exception $e) {
-    // Si viene desde el frontend (GET), redirigir con error
-    if (isset($_GET['id'])) {
+    // Verificar si es una petición AJAX
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+              strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
+    // Si es AJAX o no tiene el header referer, devolver JSON
+    if ($isAjax || !isset($_SERVER['HTTP_REFERER'])) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => true,
+            'mensaje' => $e->getMessage()
+        ], JSON_UNESCAPED_UNICODE);
+    } else {
+        // Si viene desde el frontend (navegación directa), redirigir con error
         header("Location: ../../frontend/categorias.php?error=" . urlencode($e->getMessage()));
         exit;
     }
-    
-    // Si es AJAX (POST), devolver JSON
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => true,
-        'mensaje' => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE);
 }
 ?>
