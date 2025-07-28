@@ -1,11 +1,11 @@
 <?php
 session_start();
 
-// Verificar que el usuario esté logueado y sea admin
-if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['admin'] != 1) {
-    header('Location: landingPage.php');
-    exit();
-}
+// Incluir utilidades de sesión
+require_once '../backend/UTILS/session_utils.php';
+
+// Requerir permisos de administrador
+requiereAdmin();
 ?>
 
 <!DOCTYPE html>
@@ -14,7 +14,8 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Pedidos - TecnoY Admin</title>
-    <link rel="stylesheet" href="../../css/pedidos.css">
+    <link rel="stylesheet" href="../../css/base.css">
+    <link rel="stylesheet" href="../../css/pedidosGeneral.css">
     <link rel="stylesheet" href="../../css/notifications.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -25,34 +26,33 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
             <div class="header-pedidos">
                 <h1><i class="fas fa-shopping-bag"></i> Gestión de Pedidos</h1>
                 <div class="header-actions">
-                    <button id="btn-estadisticas" class="btn-estadisticas">
-                        <i class="fas fa-chart-bar"></i> Estadísticas
-                    </button>
-                    <button id="btn-actualizar" class="btn-actualizar">
+                    <button id="btn-actualizar" class="btn-action">
                         <i class="fas fa-sync-alt"></i> Actualizar
                     </button>
+                    <button id="btn-estadisticas" class="btn-action">
+                        <i class="fas fa-chart-bar"></i> Estadísticas
+                    </button>
+                    <a href="landingPage.php" class="btn-action">
+                        <i class="fas fa-arrow-left"></i> Volver al Panel
+                    </a>
                 </div>
             </div>
 
             <!-- Resumen de estadísticas -->
-            <div class="estadisticas-resumen" id="estadisticas-resumen" style="display: none;">
-                <div class="stat-card">
-                    <i class="fas fa-shopping-cart"></i>
-                    <div class="stat-info">
+            <div class="estadisticas-resumen" id="estadisticas-resumen">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <i class="fas fa-shopping-cart"></i>
                         <h3 id="total-pedidos">0</h3>
                         <p>Total Pedidos</p>
                     </div>
-                </div>
-                <div class="stat-card">
-                    <i class="fas fa-dollar-sign"></i>
-                    <div class="stat-info">
+                    <div class="stat-card">
+                        <i class="fas fa-dollar-sign"></i>
                         <h3 id="ventas-total">$0.00</h3>
                         <p>Ventas Totales</p>
                     </div>
-                </div>
-                <div class="stat-card">
-                    <i class="fas fa-calendar"></i>
-                    <div class="stat-info">
+                    <div class="stat-card">
+                        <i class="fas fa-calendar"></i>
                         <h3 id="pedidos-mes">0</h3>
                         <p>Este Mes</p>
                     </div>
@@ -61,25 +61,32 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
 
             <!-- Filtros -->
             <div class="filtros-container">
-                <div class="filtro-grupo">
-                    <label for="filtro-fecha">Filtrar por fecha:</label>
-                    <input type="date" id="filtro-fecha-inicio" placeholder="Fecha inicio">
-                    <input type="date" id="filtro-fecha-fin" placeholder="Fecha fin">
+                <div class="filtros-grid">
+                    <div class="filtro-grupo">
+                        <label for="filtro-cliente">Buscar cliente:</label>
+                        <input type="text" id="filtro-cliente" placeholder="Nombre o email del cliente">
+                    </div>
+                    <div class="filtro-grupo">
+                        <label for="filtro-fecha-inicio">Fecha inicio:</label>
+                        <input type="date" id="filtro-fecha-inicio">
+                    </div>
+                    <div class="filtro-grupo">
+                        <label for="filtro-fecha-fin">Fecha fin:</label>
+                        <input type="date" id="filtro-fecha-fin">
+                    </div>
+                    <div class="filtro-grupo">
+                        <button id="btn-limpiar-filtros" class="btn-limpiar">
+                            <i class="fas fa-times"></i> Limpiar Filtros
+                        </button>
+                    </div>
                 </div>
-                <div class="filtro-grupo">
-                    <label for="filtro-cliente">Buscar cliente:</label>
-                    <input type="text" id="filtro-cliente" placeholder="Nombre o email del cliente">
-                </div>
-                <button id="btn-limpiar-filtros" class="btn-limpiar">
-                    <i class="fas fa-times"></i> Limpiar
-                </button>
             </div>
 
             <!-- Tabla de pedidos -->
             <div class="contTabla">
                 <div class="tabla-header">
                     <h2>Lista de Pedidos</h2>
-                    <div class="loading-indicator" id="loading-pedidos" style="display: none;">
+                    <div class="loading-indicator" id="loading-pedidos">
                         <i class="fas fa-spinner fa-spin"></i> Cargando...
                     </div>
                 </div>
@@ -102,7 +109,7 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
                 </table>
                 
                 <!-- Mensaje cuando no hay pedidos -->
-                <div class="no-pedidos" id="no-pedidos" style="display: none;">
+                <div class="no-pedidos" id="no-pedidos">
                     <i class="fas fa-shopping-bag"></i>
                     <p>No hay pedidos para mostrar</p>
                 </div>
@@ -111,7 +118,7 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
     </main>
 
     <!-- Modal para detalle de pedido -->
-    <div id="modal-detalle" class="modal-overlay" style="display: none;">
+    <div id="modal-detalle" class="modal-overlay">
         <div class="modal-container modal-detalle">
             <div class="modal-header">
                 <h2><i class="fas fa-receipt"></i> Detalle del Pedido</h2>
@@ -173,10 +180,6 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
     <!-- Sistema de notificaciones -->
     <div id="notifications-container"></div>
 
-    <footer class="footCont">
-        <!-- Footer content -->
-    </footer>
-
     <script src="../../JS/notifications.js"></script>
     <script>
         // ============================================
@@ -189,6 +192,7 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
         // INICIALIZACIÓN
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Iniciando sistema de pedidos...');
             cargarPedidos();
             configurarEventListeners();
         });
@@ -197,6 +201,8 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
         // CONFIGURAR EVENT LISTENERS
         // ============================================
         function configurarEventListeners() {
+            console.log('🔧 Configurando event listeners...');
+            
             document.getElementById('btn-actualizar').addEventListener('click', cargarPedidos);
             document.getElementById('btn-estadisticas').addEventListener('click', toggleEstadisticas);
             document.getElementById('btn-limpiar-filtros').addEventListener('click', limpiarFiltros);
@@ -205,6 +211,8 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
             document.getElementById('filtro-cliente').addEventListener('input', aplicarFiltros);
             document.getElementById('filtro-fecha-inicio').addEventListener('change', aplicarFiltros);
             document.getElementById('filtro-fecha-fin').addEventListener('change', aplicarFiltros);
+            
+            console.log('✅ Event listeners configurados');
         }
 
         // ============================================
@@ -215,33 +223,46 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
             const tbody = document.getElementById('tabla-pedidos-body');
             const noPedidos = document.getElementById('no-pedidos');
             
+            console.log('📊 Cargando pedidos...');
+            
             try {
                 loading.style.display = 'block';
                 tbody.innerHTML = '';
                 noPedidos.style.display = 'none';
                 
                 const response = await fetch('../backend/CRUD/PEDIDOS/pedidosGeneral.php?accion=obtener');
+                console.log('📡 Respuesta del servidor:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                console.log('✅ Datos recibidos:', data);
                 
                 if (data.success) {
-                    pedidosData = data.pedidos;
-                    pedidosOriginal = [...data.pedidos];
+                    pedidosData = data.pedidos || [];
+                    pedidosOriginal = [...pedidosData];
                     mostrarPedidos(pedidosData);
                     
                     if (pedidosData.length === 0) {
                         noPedidos.style.display = 'block';
                     }
                     
-                    notifications.show(`${data.totalPedidos} pedidos cargados`, 'success');
+                    if (notifications) {
+                        notifications.success(`${data.totalPedidos || 0} pedidos cargados`);
+                    }
                 } else {
-                    notifications.show(data.mensaje || 'Error al cargar pedidos', 'error');
-                    noPedidos.style.display = 'block';
+                    throw new Error(data.mensaje || 'Error al cargar pedidos');
                 }
                 
             } catch (error) {
-                console.error('Error:', error);
-                notifications.show('Error de conexión al cargar pedidos', 'error');
+                console.error('❌ Error al cargar pedidos:', error);
                 noPedidos.style.display = 'block';
+                
+                if (notifications) {
+                    notifications.error('Error al cargar pedidos: ' + error.message);
+                }
             } finally {
                 loading.style.display = 'none';
             }
@@ -254,24 +275,26 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
             const tbody = document.getElementById('tabla-pedidos-body');
             tbody.innerHTML = '';
             
+            console.log(`📋 Mostrando ${pedidos.length} pedidos`);
+            
             pedidos.forEach(pedido => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td class="tdPedidos">${pedido.idFactura}</td>
-                    <td class="tdPedidos">${formatearFecha(pedido.fecha)} ${pedido.hora}</td>
+                    <td class="tdPedidos">${pedido.idFactura || 'N/A'}</td>
+                    <td class="tdPedidos">${formatearFecha(pedido.fecha)} ${pedido.hora || ''}</td>
                     <td class="tdPedidos">
                         <div class="cliente-info">
-                            <strong>${pedido.cliente.nombre}</strong>
-                            <small>${pedido.cliente.email}</small>
+                            <strong>${pedido.cliente?.nombre || 'Cliente desconocido'}</strong>
+                            <small>${pedido.cliente?.email || ''}</small>
                         </div>
                     </td>
-                    <td class="tdPedidos">${pedido.totalProductos}</td>
+                    <td class="tdPedidos">${pedido.totalProductos || 0}</td>
                     <td class="tdPedidos">
-                        <span class="estado-badge estado-${pedido.estado.toLowerCase()}">
-                            ${pedido.estado}
+                        <span class="estado-badge estado-completado">
+                            ${pedido.estado || 'Completado'}
                         </span>
                     </td>
-                    <td class="tdPedidos">$${pedido.totalPedido.toFixed(2)}</td>
+                    <td class="tdPedidos">$${(pedido.totalPedido || 0).toFixed(2)}</td>
                     <td class="tdPedidos">
                         <button class="btn-ver-detalle" onclick="verDetallePedido('${pedido.idFactura}')">
                             <i class="fas fa-eye"></i> Ver
@@ -286,6 +309,8 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
         // VER DETALLE DE PEDIDO
         // ============================================
         async function verDetallePedido(idFactura) {
+            console.log('👁️ Viendo detalle del pedido:', idFactura);
+            
             try {
                 const response = await fetch(`../backend/CRUD/PEDIDOS/pedidosGeneral.php?accion=detalle&idFactura=${idFactura}`);
                 const data = await response.json();
@@ -293,12 +318,16 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
                 if (data.success) {
                     mostrarModalDetalle(data);
                 } else {
-                    notifications.show(data.mensaje || 'Error al cargar detalle', 'error');
+                    if (notifications) {
+                        notifications.error(data.mensaje || 'Error al cargar detalle');
+                    }
                 }
                 
             } catch (error) {
-                console.error('Error:', error);
-                notifications.show('Error de conexión al cargar detalle', 'error');
+                console.error('❌ Error al cargar detalle:', error);
+                if (notifications) {
+                    notifications.error('Error de conexión al cargar detalle');
+                }
             }
         }
 
@@ -308,14 +337,16 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
         function mostrarModalDetalle(data) {
             const modal = document.getElementById('modal-detalle');
             const factura = data.factura;
-            const productos = data.productos;
-            const totales = data.totales;
+            const productos = data.productos || [];
+            const totales = data.totales || { subtotal: 0, impuesto: 0, total: 0 };
+            
+            console.log('📄 Mostrando modal de detalle');
             
             // Llenar información general
-            document.getElementById('detalle-id-factura').textContent = factura.idFactura;
-            document.getElementById('detalle-fecha').textContent = `${formatearFecha(factura.fecha)} ${factura.hora}`;
-            document.getElementById('detalle-cliente').textContent = factura.nombre_usuario;
-            document.getElementById('detalle-email').textContent = factura.email;
+            document.getElementById('detalle-id-factura').textContent = factura.idFactura || 'N/A';
+            document.getElementById('detalle-fecha').textContent = `${formatearFecha(factura.fecha)} ${factura.hora || ''}`;
+            document.getElementById('detalle-cliente').textContent = factura.nombre_usuario || 'N/A';
+            document.getElementById('detalle-email').textContent = factura.email || 'N/A';
             
             // Llenar productos
             const productosLista = document.getElementById('productos-lista');
@@ -326,16 +357,19 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
                 productoDiv.className = 'producto-detalle-item';
                 productoDiv.innerHTML = `
                     <div class="producto-info">
-                        <img src="../../${producto.imagen}" alt="${producto.nombProducto}" class="producto-img">
+                        <img src="../../${producto.imagen || 'image/default-product.png'}" 
+                             alt="${producto.nombProducto || 'Producto'}" 
+                             class="producto-img"
+                             onerror="this.src='../../image/default-product.png'">
                         <div class="producto-datos">
-                            <h4>${producto.nombProducto}</h4>
+                            <h4>${producto.nombProducto || 'Producto sin nombre'}</h4>
                             <p>Marca: ${producto.marca_nombre || 'N/A'}</p>
-                            <p>Precio unitario: $${parseFloat(producto.precioUnitario).toFixed(2)}</p>
+                            <p>Precio unitario: $${parseFloat(producto.precioUnitario || 0).toFixed(2)}</p>
                         </div>
                     </div>
                     <div class="producto-cantidad">
-                        <span>Cantidad: ${producto.cantidad}</span>
-                        <span class="precio-total">$${parseFloat(producto.precioTotal).toFixed(2)}</span>
+                        <span>Cantidad: ${producto.cantidad || 0}</span>
+                        <span class="precio-total">$${parseFloat(producto.precioTotal || 0).toFixed(2)}</span>
                     </div>
                 `;
                 productosLista.appendChild(productoDiv);
@@ -364,7 +398,7 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
             
             if (estadisticas.style.display === 'none' || !estadisticas.style.display) {
                 await cargarEstadisticas();
-                estadisticas.style.display = 'flex';
+                estadisticas.style.display = 'block';
             } else {
                 estadisticas.style.display = 'none';
             }
@@ -374,23 +408,29 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
         // CARGAR ESTADÍSTICAS
         // ============================================
         async function cargarEstadisticas() {
+            console.log('📊 Cargando estadísticas...');
+            
             try {
                 const response = await fetch('../backend/CRUD/PEDIDOS/pedidosGeneral.php?accion=estadisticas');
                 const data = await response.json();
                 
                 if (data.success) {
                     const stats = data.estadisticas;
-                    document.getElementById('total-pedidos').textContent = stats.totalPedidos;
-                    document.getElementById('ventas-total').textContent = `$${stats.ventasTotal.toFixed(2)}`;
+                    document.getElementById('total-pedidos').textContent = stats.totalPedidos || 0;
+                    document.getElementById('ventas-total').textContent = `$${(stats.ventasTotal || 0).toFixed(2)}`;
                     
                     // Calcular pedidos del mes actual
                     const mesActual = new Date().toISOString().slice(0, 7);
-                    const pedidosMes = stats.pedidosPorMes.find(mes => mes.mes === mesActual);
+                    const pedidosMes = stats.pedidosPorMes?.find(mes => mes.mes === mesActual);
                     document.getElementById('pedidos-mes').textContent = pedidosMes ? pedidosMes.cantidad : 0;
+                    
+                    console.log('✅ Estadísticas cargadas');
+                } else {
+                    console.warn('⚠️ Error al cargar estadísticas:', data.mensaje);
                 }
                 
             } catch (error) {
-                console.error('Error al cargar estadísticas:', error);
+                console.error('❌ Error al cargar estadísticas:', error);
             }
         }
 
@@ -407,8 +447,8 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
             // Filtrar por cliente
             if (filtroCliente) {
                 pedidosFiltrados = pedidosFiltrados.filter(pedido => 
-                    pedido.cliente.nombre.toLowerCase().includes(filtroCliente) ||
-                    pedido.cliente.email.toLowerCase().includes(filtroCliente)
+                    (pedido.cliente?.nombre || '').toLowerCase().includes(filtroCliente) ||
+                    (pedido.cliente?.email || '').toLowerCase().includes(filtroCliente)
                 );
             }
             
@@ -429,6 +469,8 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
             } else {
                 noPedidos.style.display = 'none';
             }
+            
+            console.log(`🔍 Filtros aplicados: ${pedidosFiltrados.length} pedidos mostrados`);
         }
 
         // ============================================
@@ -440,13 +482,20 @@ if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['adm
             document.getElementById('filtro-fecha-fin').value = '';
             mostrarPedidos(pedidosOriginal);
             document.getElementById('no-pedidos').style.display = pedidosOriginal.length === 0 ? 'block' : 'none';
+            
+            console.log('🧹 Filtros limpiados');
         }
 
         // ============================================
         // FUNCIONES AUXILIARES
         // ============================================
         function formatearFecha(fecha) {
-            return new Date(fecha).toLocaleDateString('es-ES');
+            if (!fecha) return 'N/A';
+            try {
+                return new Date(fecha).toLocaleDateString('es-ES');
+            } catch (error) {
+                return fecha;
+            }
         }
 
         // Cerrar modal al hacer clic fuera

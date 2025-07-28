@@ -9,6 +9,7 @@
 
 session_start();
 require_once '../../CONEXION/conexion.php';
+require_once '../../UTILS/session_utils.php';
 
 // Headers de respuesta
 header('Content-Type: application/json');
@@ -40,12 +41,7 @@ try {
     // ============================================
     // 1. VERIFICAR USUARIO AUTENTICADO Y ADMIN
     // ============================================
-    if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['admin'] != 1) {
-        enviarRespuestaJSON([
-            'success' => false,
-            'mensaje' => 'Acceso denegado. Solo para administradores.'
-        ]);
-    }
+    requiereAdminAPI();
 
     // ============================================
     // 2. DETERMINAR ACCIÓN
