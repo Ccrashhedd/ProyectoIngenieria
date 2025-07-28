@@ -18,10 +18,10 @@ class UsuarioSesion {
         const currentPath = window.location.pathname;
         const scriptSrc = document.currentScript?.src || '';
         
-        // Para XAMPP: http://localhost/ProyectoIngenieria/TecnoY_Page/...
-        if (currentPath.includes('/ProyectoIngenieria/TecnoY_Page/')) {
-            const index = currentPath.indexOf('/ProyectoIngenieria/TecnoY_Page/');
-            return currentPath.substring(0, index) + '/ProyectoIngenieria/TecnoY_Page';
+        // Para XAMPP: http://localhost/ProyectoIngenieria/ProyectoIngenieria/TecnoY_Page/...
+        if (currentPath.includes('/ProyectoIngenieria/ProyectoIngenieria/TecnoY_Page/')) {
+            const index = currentPath.indexOf('/ProyectoIngenieria/ProyectoIngenieria/TecnoY_Page/');
+            return currentPath.substring(0, index) + '/ProyectoIngenieria/ProyectoIngenieria/TecnoY_Page';
         }
         
         // Si estamos en una página dentro de php/frontend/

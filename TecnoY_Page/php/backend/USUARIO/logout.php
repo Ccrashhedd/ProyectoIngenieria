@@ -45,7 +45,7 @@ try {
     echo json_encode([
         'success' => true,
         'mensaje' => 'Sesión cerrada exitosamente',
-        'redirect' => '/ProyectoIngenieria/TecnoY_Page/php/frontend/landingPage.php',
+        'redirect' => '/ProyectoIngenieria/ProyectoIngenieria/TecnoY_Page/php/frontend/landingPage.php',
         'usuario_cerrado' => $usuario_nombre
     ], JSON_UNESCAPED_UNICODE);
 
