@@ -309,6 +309,14 @@ function mostrarCarrito() {
     document.getElementById('impuestos').textContent = `$${impuestos.toFixed(2)}`;
     document.getElementById('total').textContent = `$${total.toFixed(2)}`;
     
+    // Actualizar también totales globales para uso posterior
+    window.carritoTotales = {
+        subtotal: subtotal,
+        impuestos: impuestos,
+        total: total,
+        items: totalItems
+    };
+    
     // Animar items
     setTimeout(() => {
         document.querySelectorAll('.carrito-item').forEach(item => {
@@ -407,8 +415,83 @@ function vaciarCarrito() {
 }
 
 function procederCheckout() {
-    notifications.show('Redirigiendo al proceso de pago...', 'info');
-    // Aquí irá la lógica del checkout
+    if (carritoData.length === 0) {
+        notifications.show('El carrito está vacío', 'error');
+        return;
+    }
+    
+    // Usar totales globales calculados
+    const totales = window.carritoTotales || { subtotal: 0, impuestos: 0, total: 0 };
+    
+    // Actualizar valores en el modal
+    document.getElementById('modal-subtotal').textContent = `$${totales.subtotal.toFixed(2)}`;
+    document.getElementById('modal-impuestos').textContent = `$${totales.impuestos.toFixed(2)}`;
+    document.getElementById('modal-total').textContent = `$${totales.total.toFixed(2)}`;
+    
+    // Abrir modal
+    document.getElementById('payment-modal').showModal();
+}
+
+function cerrarModal() {
+    document.getElementById('payment-modal').close();
+}
+
+async function procesarPago() {
+    const btnPagar = document.getElementById('btn-pagar');
+    const originalText = btnPagar.innerHTML;
+    
+    // Mostrar estado de carga
+    btnPagar.disabled = true;
+    btnPagar.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin">
+            <path d="M21 12a9 9 0 0 0-9-9 9.58 9.58 0 0 0-6 2l3 3"/>
+            <path d="M3 12a9 9 0 0 0 9 9 9.58 9.58 0 0 0 6-2l-3-3"/>
+        </svg>
+        Procesando...
+    `;
+    
+    try {
+        const response = await fetch('../backend/CRUD/CARRITO/carritoFactura.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'accion=procesar_pago'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Cerrar modal
+            cerrarModal();
+            
+            // Mostrar mensaje de éxito
+            notifications.show('Pago exitoso, pedido realizado', 'success', 8000);
+            
+            // Recargar carrito (debería estar vacío ahora)
+            setTimeout(() => {
+                cargarCarrito();
+            }, 2000);
+            
+            // Opcional: redirigir después de un tiempo
+            setTimeout(() => {
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                }
+            }, 4000);
+            
+        } else {
+            notifications.show(data.mensaje || 'Error al procesar el pago', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error al procesar pago:', error);
+        notifications.show('Error de conexión al procesar el pago', 'error');
+    } finally {
+        // Restaurar botón
+        btnPagar.disabled = false;
+        btnPagar.innerHTML = originalText;
+    }
 }
     </script>
 
@@ -435,19 +518,59 @@ function procederCheckout() {
         }, 100);
     });
     </script>
-    <dialog>
-        <div>
-            <div>
-                <label>Subtotal:</label>
-                <input type="text" id="subtotal-dialog" value="$0.00" readonly>
-                <label>ITBMS:</label>
-                <input type="text" id="impuestos-dialog" value="$0.00" readonly>
-                <label>Total:</label>
-                <input type="text" id="total-dialog" value="$0.00" readonly>
-
+    
+    <!-- Modal de Confirmación de Pago -->
+    <dialog id="payment-modal" class="payment-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                        <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                    Confirmar Pago
+                </h3>
+                <button class="modal-close" onclick="cerrarModal()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
             </div>
-
-            <button>PAGAR</button>
+            
+            <div class="modal-body">
+                <div class="payment-summary">
+                    <h4>Resumen del Pedido</h4>
+                    <div class="summary-line">
+                        <span>Subtotal:</span>
+                        <span id="modal-subtotal">$0.00</span>
+                    </div>
+                    <div class="summary-line">
+                        <span>ITBMS (7%):</span>
+                        <span id="modal-impuestos">$0.00</span>
+                    </div>
+                    <div class="summary-line total-line">
+                        <span><strong>Total a Pagar:</strong></span>
+                        <span id="modal-total"><strong>$0.00</strong></span>
+                    </div>
+                </div>
+                
+                <div class="payment-info">
+                    <p>Al confirmar el pago, se procesará tu pedido y se generará una factura.</p>
+                    <p><small>* Los productos serán descontados del inventario</small></p>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                <button class="btn-primary" onclick="procesarPago()" id="btn-pagar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 12l2 2 4-4"/>
+                        <path d="M21 12c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2s.9-2 2-2h14c1.1 0 2 .9 2 2z"/>
+                    </svg>
+                    Confirmar Pago
+                </button>
+            </div>
         </div>
     </dialog>
 </body>
