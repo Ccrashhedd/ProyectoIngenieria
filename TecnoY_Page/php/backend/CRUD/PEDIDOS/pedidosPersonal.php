@@ -160,8 +160,8 @@ function obtenerDetallePedido($conn, $idFactura, $idUsuario) {
                 f.idFactura,
                 f.fecha,
                 f.hora,
-                u.nombre_usuario,
-                u.email
+                u.nombUsuario as nombre_usuario,
+                u.emailUsuario as email
             FROM factura f
             JOIN usuario u ON f.idUsuario = u.idUsuario
             WHERE f.idFactura = ?
