@@ -205,6 +205,67 @@ session_start();
             color: #dc3545;
         }
         
+        /* Estilos para selector de cantidad */
+        .modal-cantidad-section {
+            border: 2px solid var(--primary-color, #0066ff);
+            border-radius: 10px;
+            padding: 15px;
+            background: rgba(0, 102, 255, 0.1);
+            margin: 20px 0;
+        }
+
+        .cantidad-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .cantidad-btn {
+            background: var(--primary-color, #0066ff);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .cantidad-btn:hover:not(:disabled) {
+            background: var(--secondary-color, #00d4ff);
+            transform: scale(1.1);
+        }
+
+        .cantidad-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #modal-cantidad {
+            width: 80px;
+            text-align: center;
+            padding: 8px;
+            border: 2px solid var(--primary-color);
+            border-radius: 6px;
+            background: #2d2d2d;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        #modal-cantidad:focus {
+            outline: none;
+            border-color: var(--secondary-color, #00d4ff);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+        
         /* Footer del modal */
         .modal-footer {
             display: flex;
@@ -485,6 +546,16 @@ session_start();
                         
                         <!-- Stock disponible -->
                         <div id="modal-stock" class="modal-stock"></div>
+                        
+                        <!-- Selector de cantidad -->
+                        <div class="modal-cantidad-section">
+                            <label class="modal-label" for="modal-cantidad">Cantidad:</label>
+                            <div class="cantidad-controls">
+                                <button type="button" id="btn-cantidad-menos" class="cantidad-btn" onclick="cambiarCantidad(-1)">-</button>
+                                <input type="number" id="modal-cantidad" value="1" min="1" max="99">
+                                <button type="button" id="btn-cantidad-mas" class="cantidad-btn" onclick="cambiarCantidad(1)">+</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -545,6 +616,7 @@ const notifications = {
 let categoriasData = [];
 let productosData = [];
 let marcasData = [];
+let eventListenersRegistered = false; // Flag para evitar registros duplicados
 let filtroActual = {
     categoria: "",
     nombre: "",
@@ -561,23 +633,59 @@ let rangosPrecios = {
 };
 
 // ============================================
-// FUNCIÓN PARA ACTUALIZAR CONTADOR DEL CARRITO
+// FUNCIÓN MEJORADA PARA ACTUALIZAR CONTADOR DEL CARRITO
 // ============================================
 function actualizarContadorCarrito() {
-    fetch('../backend/carrito_simple.php?accion=obtener')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const carritoLink = document.querySelector('.carrito-link');
-                if (carritoLink) {
-                    const totalItems = data.carrito.reduce((sum, item) => sum + parseInt(item.cantidad || 0), 0);
-                    carritoLink.innerHTML = 'Carrito (' + totalItems + ')';
-                }
+    console.log('🔄 Actualizando contador del carrito...');
+    
+    fetch('../backend/CRUD/CARRITO/carritoController.php?accion=obtener', {
+        method: 'GET'
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('📊 Datos del carrito recibidos:', data);
+        
+        if (data.success) {
+            // Buscar el elemento del carrito en el header
+            const carritoLink = document.querySelector('.carrito-link');
+            const carritoIcon = document.querySelector('[href*="carrito"]');
+            const headerCarrito = document.querySelector('#header-right-content .carrito-link, #header-right-content a[href*="carrito"]');
+            
+            const totalItems = data.totalItems || 0;
+            const textoCarrito = `🛒 Carrito (${totalItems})`;
+            
+            // Actualizar diferentes posibles elementos del carrito
+            if (carritoLink) {
+                carritoLink.textContent = textoCarrito;
+                console.log('✅ Contador actualizado en carritoLink:', totalItems);
             }
-        })
-        .catch(error => {
-            console.error('Error al actualizar contador del carrito:', error);
-        });
+            
+            if (carritoIcon && !carritoLink) {
+                carritoIcon.textContent = textoCarrito;
+                console.log('✅ Contador actualizado en carritoIcon:', totalItems);
+            }
+            
+            if (headerCarrito) {
+                headerCarrito.textContent = textoCarrito;
+                console.log('✅ Contador actualizado en headerCarrito:', totalItems);
+            }
+            
+            // Si no se encuentra ningún elemento, buscar de forma más amplia
+            const todosLosEnlaces = document.querySelectorAll('a');
+            todosLosEnlaces.forEach(enlace => {
+                if (enlace.href && enlace.href.includes('carrito')) {
+                    enlace.textContent = textoCarrito;
+                    console.log('✅ Contador actualizado en enlace genérico:', totalItems);
+                }
+            });
+            
+        } else {
+            console.warn('⚠️ No se pudo obtener información del carrito:', data.mensaje);
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error al actualizar contador del carrito:', error);
+    });
 }
 
 // ============================================
@@ -1248,6 +1356,43 @@ function renderProductosFiltrados(categorias) {
 }
 
 // ============================================
+// FUNCIÓN PARA CAMBIAR CANTIDAD EN EL MODAL
+// ============================================
+function cambiarCantidad(cambio) {
+    const inputCantidad = document.getElementById('modal-cantidad');
+    const btnMenos = document.getElementById('btn-cantidad-menos');
+    const btnMas = document.getElementById('btn-cantidad-mas');
+    
+    if (!inputCantidad) return;
+    
+    let cantidadActual = parseInt(inputCantidad.value) || 1;
+    let nuevaCantidad = cantidadActual + cambio;
+    
+    // Obtener stock máximo del producto actual
+    const prod = productosData.find(p => p.id == window.currentProductId);
+    const stockMaximo = prod ? prod.stock : 99;
+    
+    // Validar límites
+    if (nuevaCantidad < 1) {
+        nuevaCantidad = 1;
+    }
+    
+    if (nuevaCantidad > stockMaximo) {
+        nuevaCantidad = stockMaximo;
+        notifications.show(`Stock máximo disponible: ${stockMaximo}`, 'warning');
+    }
+    
+    // Actualizar input
+    inputCantidad.value = nuevaCantidad;
+    
+    // Actualizar estado de botones
+    btnMenos.disabled = (nuevaCantidad <= 1);
+    btnMas.disabled = (nuevaCantidad >= stockMaximo);
+    
+    console.log('🔢 Cantidad actualizada:', nuevaCantidad);
+}
+
+// ============================================
 // FUNCIÓN PARA MOSTRAR DETALLE DEL PRODUCTO
 // ============================================
 function mostrarDetalleProducto(prodId) {
@@ -1348,6 +1493,45 @@ function mostrarModalConProducto(producto) {
     const btnAgregar = document.getElementById('btn-agregar-carrito');
     const stock = parseInt(producto.stock);
     
+    // Configurar selector de cantidad
+    const inputCantidad = document.getElementById('modal-cantidad');
+    const btnMenos = document.getElementById('btn-cantidad-menos');
+    const btnMas = document.getElementById('btn-cantidad-mas');
+    
+    if (inputCantidad) {
+        inputCantidad.value = 1;
+        inputCantidad.max = producto.stock;
+        
+        // Event listener para validar entrada manual
+        inputCantidad.addEventListener('input', function() {
+            let valor = parseInt(this.value) || 1;
+            
+            if (valor < 1) {
+                valor = 1;
+            }
+            
+            if (valor > producto.stock) {
+                valor = producto.stock;
+                notifications.show(`Stock máximo disponible: ${producto.stock}`, 'warning');
+            }
+            
+            this.value = valor;
+            
+            // Actualizar botones
+            if (btnMenos) btnMenos.disabled = (valor <= 1);
+            if (btnMas) btnMas.disabled = (valor >= producto.stock);
+        });
+    }
+    
+    // Configurar botones de cantidad
+    if (btnMenos) {
+        btnMenos.disabled = true; // Inicialmente deshabilitado porque cantidad es 1
+    }
+    
+    if (btnMas) {
+        btnMas.disabled = (producto.stock <= 1);
+    }
+    
     if (stock > 10) {
         stockElement.innerHTML = '<div class="stock-alert success">' +
             '<i class="fas fa-box"></i>' +
@@ -1355,7 +1539,7 @@ function mostrarModalConProducto(producto) {
             '</div>';
         btnAgregar.disabled = false;
         btnAgregar.classList.remove('disabled');
-        btnAgregar.textContent = '🛒 Agregar al Carrito';
+        btnAgregar.innerHTML = '<i class="fas fa-shopping-cart"></i> Agregar al Carrito';
     } else if (stock > 0) {
         stockElement.innerHTML = '<div class="stock-alert warning">' +
             '<i class="fas fa-exclamation-triangle"></i>' +
@@ -1363,7 +1547,7 @@ function mostrarModalConProducto(producto) {
             '</div>';
         btnAgregar.disabled = false;
         btnAgregar.classList.remove('disabled');
-        btnAgregar.textContent = '🛒 Agregar al Carrito';
+        btnAgregar.innerHTML = '<i class="fas fa-shopping-cart"></i> Agregar al Carrito';
     } else {
         stockElement.innerHTML = '<div class="stock-alert danger">' +
             '<i class="fas fa-times-circle"></i>' +
@@ -1371,7 +1555,12 @@ function mostrarModalConProducto(producto) {
             '</div>';
         btnAgregar.disabled = true;
         btnAgregar.classList.add('disabled');
-        btnAgregar.textContent = '❌ Agotado';
+        btnAgregar.innerHTML = '❌ Agotado';
+        
+        // También deshabilitar selector de cantidad
+        if (inputCantidad) inputCantidad.disabled = true;
+        if (btnMenos) btnMenos.disabled = true;
+        if (btnMas) btnMas.disabled = true;
     }
     
     // 5. PERSISTENCIA: Guardar ID para otras funciones - Siguiendo documentación
@@ -1382,40 +1571,23 @@ function mostrarModalConProducto(producto) {
 }
 
 // ============================================
-// FUNCIÓN PARA AGREGAR AL CARRITO
+// FUNCIÓN PARA AGREGAR AL CARRITO - ACTUALIZADA
 // ============================================
 function agregarAlCarrito() {
-    /* 
-    ==========================================
-    FUNCIONALIDAD DEL CARRITO DE COMPRAS
-    ==========================================
+    console.log('🛒 Iniciando proceso de agregar al carrito...');
     
-    Esta función maneja la adición de productos al carrito de compras.
-    Actualmente implementa:
+    // Verificar que no hay otra petición en curso (evitar dobles clics)
+    const btnAgregar = document.getElementById('btn-agregar-carrito');
+    if (btnAgregar.disabled) {
+        console.log('⚠️ Petición ya en curso, ignorando...');
+        return;
+    }
     
-    1. VALIDACIONES BÁSICAS:
-       - Verificar que el producto existe
-       - Verificar stock disponible
-       - Validar cantidad a agregar
-    
-    2. COMUNICACIÓN CON BACKEND:
-       - Enviar datos del producto al servidor
-       - Manejar respuestas de éxito/error
-       - Actualizar estado del carrito
-    
-    3. FUNCIONALIDADES ADICIONALES A IMPLEMENTAR:
-       - Selector de cantidad en el modal
-       - Validación de usuario logueado
-       - Descuentos y promociones
-       - Cálculo de envío
-       - Gestión de wishlist/favoritos
-       - Comparación de productos
-       - Notificaciones push al usuario
-       - Integración con sistema de pagos
-       - Historial de compras del usuario
-    
-    ==========================================
-    */
+    // Verificar que hay un producto seleccionado
+    if (!window.currentProductId) {
+        notifications.show('Error: No hay producto seleccionado', 'error');
+        return;
+    }
     
     // Obtener el producto actual
     const prod = productosData.find(p => p.id == window.currentProductId);
@@ -1424,103 +1596,106 @@ function agregarAlCarrito() {
         return;
     }
     
+    // Obtener cantidad seleccionada del selector
+    const inputCantidad = document.getElementById('modal-cantidad');
+    const cantidad = inputCantidad ? parseInt(inputCantidad.value) || 1 : 1;
+    
+    console.log('📦 Producto a agregar:', prod.nombre, 'Cantidad:', cantidad);
+    
     // Verificar stock disponible
     if (prod.stock <= 0) {
         notifications.show('Producto sin stock disponible', 'error');
         return;
     }
     
-    /* 
-    TODO: Implementar selector de cantidad
-    - Agregar input numérico en el modal
-    - Validar cantidad máxima según stock
-    - Permitir modificar cantidad antes de agregar
-    */
-    
-    // Preparar datos para enviar al backend
-    const formData = new FormData();
-    formData.append('accion', 'agregar');
-    formData.append('producto_id', prod.id);
-    formData.append('cantidad', 1); // TODO: Obtener del selector de cantidad
-    
-    /* 
-    TODO: Validaciones adicionales antes del envío
-    - Verificar si el usuario está logueado
-    - Aplicar descuentos disponibles
-    - Calcular subtotales
-    - Verificar límites de compra por usuario
-    */
+    if (cantidad > prod.stock) {
+        notifications.show(`Stock insuficiente. Solo hay ${prod.stock} unidades disponibles`, 'error');
+        return;
+    }
     
     // Mostrar indicador de carga en el botón
-    const btnAgregar = document.getElementById('btn-agregar-carrito');
     const textoOriginal = btnAgregar.innerHTML;
     btnAgregar.innerHTML = '<span class="spinner"></span> Agregando...';
     btnAgregar.disabled = true;
     
-    // Realizar petición al backend
-    fetch('../backend/carrito_simple.php', {
+    // Preparar datos para enviar al nuevo sistema de carrito
+    const formData = new FormData();
+    formData.append('accion', 'agregar');
+    formData.append('idProducto', prod.id);
+    formData.append('cantidad', cantidad);
+    
+    console.log('📤 Enviando datos:', {
+        accion: 'agregar',
+        idProducto: prod.id,
+        cantidad: cantidad
+    });
+    
+    // Realizar petición al nuevo sistema de carrito
+    fetch('../backend/CRUD/CARRITO/carritoController.php', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(response => {
+        console.log('📡 Respuesta del servidor:', response.status);
+        
+        // Verificar que la respuesta es válida antes de parsear JSON
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return response.text(); // Obtener como texto primero para debuggear
+    })
+    .then(responseText => {
+        console.log('📥 Texto de respuesta recibido:', responseText);
+        
+        // Intentar parsear como JSON
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            console.error('❌ Error al parsear JSON:', e);
+            console.error('📄 Contenido de respuesta:', responseText);
+            throw new Error('La respuesta del servidor no es JSON válido');
+        }
+        
+        console.log('📊 Datos parseados:', data);
+        
         if (data.success) {
             // Mostrar notificación de éxito
-            notifications.show(prod.nombre + ' agregado al carrito', 'success');
+            notifications.show(data.mensaje || `${prod.nombre} agregado al carrito`, 'success');
             
             // Actualizar contador del carrito en el header
             actualizarContadorCarrito();
             
-            /* 
-            TODO: Funcionalidades adicionales al agregar exitosamente
-            - Mostrar productos recomendados/relacionados
-            - Sugerir productos complementarios
-            - Ofrecer opciones de compra rápida
-            - Actualizar wishlist si el producto estaba ahí
-            - Enviar analytics del evento
-            - Mostrar preview del carrito
-            */
-            
-            // Cerrar modal usando el método más compatible
+            // Cerrar modal
             cerrarModal();
             
             // Actualizar stock en memoria para reflejar el cambio inmediato
-            prod.stock -= 1;
+            if (prod.stock > 0) {
+                prod.stock -= cantidad;
+                
+                // Si el producto se queda sin stock, actualizar la UI del modal si se abre nuevamente
+                if (prod.stock === 0) {
+                    console.log('⚠️ Producto sin stock después de agregar al carrito');
+                }
+            }
             
-            /* 
-            TODO: Actualizar UI adicional
-            - Refrescar vista de productos si es necesario
-            - Actualizar indicador de stock en tarjetas de productos
-            - Mostrar badge "En el carrito" en el producto
-            */
+            console.log('✅ Producto agregado exitosamente al carrito');
             
         } else {
-            notifications.show(data.message || 'Error al agregar al carrito', 'error');
-            
-            /* 
-            TODO: Manejo avanzado de errores
-            - Mostrar sugerencias según el tipo de error
-            - Reautenticar usuario si la sesión expiró
-            - Refrescar stock si cambió
-            - Ofrecer alternativas (wishlist, notificar cuando haya stock)
-            */
+            notifications.show(data.mensaje || 'Error al agregar al carrito', 'error');
+            console.error('❌ Error del servidor:', data.mensaje);
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('❌ Error de conexión:', error);
         notifications.show('Error de conexión al agregar al carrito', 'error');
-        
-        /* 
-        TODO: Manejo de errores de red
-        - Implementar retry automático
-        - Guardar en localStorage para retry posterior
-        - Mostrar modo offline si aplica
-        */
     })
     .finally(() => {
         // Restaurar estado original del botón
         btnAgregar.innerHTML = textoOriginal;
         btnAgregar.disabled = false;
+        console.log('🔄 Estado del botón restaurado');
     });
 }
 
@@ -1550,31 +1725,17 @@ function cerrarModal() {
     }
 }
 
-// Cierre al hacer clic fuera del contenido - Siguiendo documentación
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('modalProducto');
-    // Solo cerrar si se hace clic en el fondo del modal, no en el contenido
-    if (event.target === modal) {
-        cerrarModal();
-    }
-});
-
-// Cierre con tecla ESC - Siguiendo documentación
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        const modal = document.getElementById('modalProducto');
-        // Solo cerrar si el modal está visible
-        if (modal && modal.style.display === 'flex') {
-            cerrarModal();
-        }
-    }
-});
-
 // ============================================
 // INICIALIZACIÓN Y EVENTOS MEJORADOS - Siguiendo documentación
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📋 Sistema de modales inicializado - Siguiendo documentación');
+    
+    // Evitar registrar event listeners múltiples veces
+    if (eventListenersRegistered) {
+        console.log('⚠️ Event listeners ya registrados, omitiendo...');
+        return;
+    }
     
     // Verificar elementos del modal personalizado
     const modal = document.getElementById('modalProducto');
@@ -1584,7 +1745,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Verificar elementos internos del modal
         const elementos = [
             'modal-img', 'modal-nombre', 'modal-marca', 'modal-categoria',
-            'modal-descripcion', 'modal-precio', 'modal-stock', 'btn-agregar-carrito'
+            'modal-descripcion', 'modal-precio', 'modal-stock', 'btn-agregar-carrito',
+            'modal-cantidad', 'btn-cantidad-menos', 'btn-cantidad-mas'
         ];
         
         elementos.forEach(id => {
@@ -1600,9 +1762,16 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('❌ Modal personalizado HTML no encontrado');
     }
     
-    // Manejar clics en productos dinámicamente - Siguiendo documentación
+    // Consolidar todos los event listeners en uno solo para evitar duplicados
     document.addEventListener('click', function(event) {
-        // Solo procesar clics en elementos con la clase 'producto'
+        // 1. Manejar cierre del modal al hacer clic fuera
+        const modal = document.getElementById('modalProducto');
+        if (event.target === modal) {
+            cerrarModal();
+            return;
+        }
+        
+        // 2. Manejar clics en productos
         if (event.target.closest('.producto')) {
             event.preventDefault();
             event.stopPropagation();
@@ -1622,6 +1791,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Event listener para tecla ESC
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const modal = document.getElementById('modalProducto');
+            // Solo cerrar si el modal está visible
+            if (modal && modal.style.display === 'flex') {
+                cerrarModal();
+            }
+        }
+    });
+    
     // Configurar botón de cierre del modal - Siguiendo documentación
     const botonCerrar = document.querySelector('#modalProducto .close');
     if (botonCerrar) {
@@ -1632,6 +1812,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Marcar que los event listeners ya están registrados
+    eventListenersRegistered = true;
     console.log('✅ Eventos del modal configurados correctamente');
     
     // Función de prueba mejorada para el modal - Siguiendo documentación

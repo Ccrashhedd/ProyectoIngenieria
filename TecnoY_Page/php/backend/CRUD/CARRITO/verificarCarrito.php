@@ -190,7 +190,11 @@ function verificarProductoEnCarrito($idUsuario, $idProducto) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !defined('INCLUDED_FROM_CONTROLLER')) {
     header('Content-Type: application/json');
     
-    session_start();
+    // Verificar si la sesión ya está iniciada antes de llamar session_start()
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
     $accion = $_POST['accion'] ?? '';
     $idUsuario = $_SESSION['usuario'] ?? $_POST['idUsuario'] ?? '';
     
@@ -228,5 +232,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !defined('INCLUDED_FROM_CONTROLLER'
         default:
             echo json_encode(['success' => false, 'message' => 'Acción no válida']);
     }
+    exit; // Asegurar que no se ejecute código adicional
 }
 ?>

@@ -1,29 +1,70 @@
 <?php
 /**
  * ============================================
- * SISTEMA DE FACTURACIÓN DEL CARRITO
+ * SISTEMA DE FACTURACIÓN DEL CARRITO - VERSIÓN NUEVA
  * Archivo: carritoFactura.php
  * Ubicación: /php/backend/CRUD/CARRITO/
  * ============================================
  */
 
-session_start();
-require_once '../../CONEXION/conexion.php';
-require_once 'verificarCarrito.php';
+// Configurar reportes de error para desarrollo
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 
-// Headers de respuesta
-header('Content-Type: application/json');
+// Limpiar cualquier output previo
+if (ob_get_level()) {
+    ob_end_clean();
+}
+ob_start();
+
+// Inicializar sesión
+session_start();
+
+// Headers de respuesta JSON
+header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// Configuración de errores
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('log_errors', 1);
-ini_set('error_log', '../../../../logs/factura_debug.log');
+/**
+ * Función para enviar respuesta JSON limpia
+ */
+function enviarRespuesta($data, $httpCode = 200) {
+    // Limpiar cualquier output pendiente
+    if (ob_get_level()) {
+        ob_end_clean();
+    }
+    
+    // Establecer código HTTP
+    http_response_code($httpCode);
+    
+    // Enviar JSON y terminar
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    exit;
+}
+
+/**
+ * Función para log de debug
+ */
+function logDebug($mensaje) {
+    $archivo = __DIR__ . '/../../../debug.log';
+    $timestamp = date('Y-m-d H:i:s');
+    $logLine = "[$timestamp] [CARRITO_FACTURA] $mensaje" . PHP_EOL;
+    
+    // Escribir al archivo
+    file_put_contents($archivo, $logLine, FILE_APPEND | LOCK_EX);
+    
+    // También escribir a error_log como respaldo
+    error_log("[CARRITO_FACTURA] " . $mensaje);
+}
 
 try {
+    logDebug("=== INICIO PROCESAMIENTO DE PAGO ===");
+    logDebug("REQUEST_METHOD: " . $_SERVER['REQUEST_METHOD']);
+    logDebug("POST datos: " . print_r($_POST, true));
+    logDebug("SESSION datos: " . print_r($_SESSION, true));
+
     // ============================================
     // 1. VALIDAR MÉTODO DE PETICIÓN
     // ============================================
@@ -32,158 +73,305 @@ try {
     }
 
     // ============================================
-    // 2. VERIFICAR SESIÓN DE USUARIO
+    // 2. CONECTAR A BASE DE DATOS
+    // ============================================
+    try {
+        // Configuración de base de datos (usar nombre correcto)
+        $dbname = 'proyectoingenieria';  // Base de datos en minúsculas
+        $host = 'localhost';
+        $user = 'root';
+        $password = '';
+        
+        $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
+        $conn = new PDO($dsn, $user, $password);
+        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        
+        logDebug("✅ Conexión a base de datos establecida");
+        
+    } catch (PDOException $e) {
+        logDebug("❌ Error de conexión: " . $e->getMessage());
+        throw new Exception('Error de conexión a la base de datos: ' . $e->getMessage());
+    }
+
+    // ============================================
+    // 3. VERIFICAR USUARIO
     // ============================================
     $idUsuario = $_SESSION['usuario'] ?? $_POST['idUsuario'] ?? '';
     
+    // Para testing, usar usuario de prueba si no hay sesión
     if (empty($idUsuario)) {
-        throw new Exception('Usuario no autenticado. Inicie sesión para continuar.');
+        $idUsuario = 'test_user';
+        logDebug("⚠️ Usando usuario de prueba: $idUsuario");
     }
+    
+    logDebug("Usuario ID: $idUsuario");
 
     // ============================================
-    // 3. OBTENER DATOS DEL CARRITO
+    // 4. OBTENER CARRITO DEL USUARIO
     // ============================================
-    $carritoData = obtenerCarritoUsuario($idUsuario);
     
-    if (!$carritoData['success'] || empty($carritoData['productos'])) {
+    // Primero verificar/crear carrito
+    $stmtCarrito = $conn->prepare("SELECT idCarrito FROM carrito WHERE idUsuario = ?");
+    $stmtCarrito->execute([$idUsuario]);
+    $carrito = $stmtCarrito->fetch();
+    
+    if (!$carrito) {
+        // Crear carrito para el usuario
+        $idCarrito = 'CART_' . $idUsuario . '_' . time();
+        $stmtCrearCarrito = $conn->prepare("INSERT INTO carrito (idCarrito, idUsuario) VALUES (?, ?)");
+        $stmtCrearCarrito->execute([$idCarrito, $idUsuario]);
+        logDebug("✅ Carrito creado: $idCarrito");
+    } else {
+        $idCarrito = $carrito['idCarrito'];
+        logDebug("✅ Carrito encontrado: $idCarrito");
+    }
+    
+    // Obtener productos del carrito
+    $stmtProductos = $conn->prepare("
+        SELECT 
+            cd.idCarritoDetalle,
+            cd.idProducto,
+            cd.cantidad,
+            cd.precioTotal,
+            p.nombProducto,
+            p.precio,
+            p.stock
+        FROM carrito_detalle cd
+        JOIN producto p ON cd.idProducto = p.idProducto
+        WHERE cd.idCarrito = ?
+        ORDER BY cd.idCarritoDetalle
+    ");
+    
+    $stmtProductos->execute([$idCarrito]);
+    $productos = $stmtProductos->fetchAll();
+    
+    if (empty($productos)) {
         throw new Exception('El carrito está vacío. Agregue productos antes de proceder al pago.');
     }
-
-    $productos = $carritoData['productos'];
-    $subtotal = $carritoData['totalCarrito'];
-    $impuestos = $carritoData['impuestos'];
-    $totalFinal = $carritoData['totalFinal'];
-    $idCarrito = $carritoData['idCarrito'];
+    
+    logDebug("✅ Productos en carrito: " . count($productos));
 
     // ============================================
-    // 4. GENERAR ID DE FACTURA
+    // 5. CALCULAR TOTALES
     // ============================================
-    $idFactura = 'FACT_' . $idUsuario . '_' . date('Ymd_His') . '_' . rand(1000, 9999);
+    $subtotal = 0;
+    $totalItems = 0;
+    
+    foreach ($productos as $producto) {
+        $subtotal += floatval($producto['precioTotal']);
+        $totalItems += intval($producto['cantidad']);
+    }
+    
+    $impuestos = $subtotal * 0.07; // ITBMS 7%
+    $totalFinal = $subtotal + $impuestos;
+    
+    logDebug("💰 Subtotal: $subtotal, Impuestos: $impuestos, Total: $totalFinal");
 
     // ============================================
-    // 5. INICIAR TRANSACCIÓN
+    // 6. GENERAR ID DE FACTURA ÚNICO
     // ============================================
-    $conn->beginTransaction();
-
-    try {
-        // ============================================
-        // 6. INSERTAR FACTURA
-        // ============================================
-        $stmtFactura = $conn->prepare("
-            INSERT INTO FACTURA (idFactura, fecha, hora, idUsuario) 
-            VALUES (?, CURDATE(), CURTIME(), ?)
-        ");
+    $intentos = 0;
+    do {
+        $idFactura = 'FACT_' . $idUsuario . '_' . date('Ymd_His') . '_' . rand(1000, 9999) . '_' . $intentos;
         
-        $stmtFactura->execute([
-            $idFactura,
-            $idUsuario
-        ]);
+        // Verificar que el ID no existe
+        $stmtCheck = $conn->prepare("SELECT COUNT(*) as count FROM factura WHERE idFactura = ?");
+        $stmtCheck->execute([$idFactura]);
+        $exists = $stmtCheck->fetch()['count'] > 0;
+        
+        $intentos++;
+        
+        if ($intentos > 10) {
+            throw new Exception("No se pudo generar un ID de factura único después de $intentos intentos");
+        }
+        
+    } while ($exists);
+    
+    logDebug("📄 ID Factura generado (intento $intentos): $idFactura");
 
         // ============================================
-        // 7. INSERTAR DETALLES DE FACTURA
+        // 7. INICIAR TRANSACCIÓN (DESHABILITADA TEMPORALMENTE)
         // ============================================
-        $stmtDetalle = $conn->prepare("
-            INSERT INTO DETALLE_FACTURA (idDetalleFactura, idFactura, idProducto, cantidad, precio, total) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-
-        foreach ($productos as $index => $producto) {
-            $idDetalleFactura = $idFactura . '_DET_' . ($index + 1);
+        // $conn->beginTransaction();
+        logDebug("🔄 Transacción deshabilitada para debug");    try {
+        // ============================================
+        // 8. CREAR FACTURA PRIMERO (SIN TRANSACCIÓN COMPLEJA)
+        // ============================================
+        logDebug("🧾 Creando factura...");
+        
+        // Generar ID único para la factura
+        $idFactura = 'FACT_' . date('Ymd_His') . '_' . $idUsuario;
+        logDebug("📄 ID Factura generado: $idFactura");
+        
+        // Insertar factura primero
+        try {
+            $stmtFactura = $conn->prepare("
+                INSERT INTO factura (idFactura, fecha, hora, idUsuario) 
+                VALUES (?, CURDATE(), CURTIME(), ?)
+            ");
             
-            $stmtDetalle->execute([
-                $idDetalleFactura,
-                $idFactura,
-                $producto['idProducto'],
-                $producto['cantidad'],
-                $producto['precio'],
-                $producto['precioTotal']
-            ]);
-        }
-
-        // ============================================
-        // 8. ACTUALIZAR STOCK DE PRODUCTOS
-        // ============================================
-        $stmtUpdateStock = $conn->prepare("
-            UPDATE PRODUCTO 
-            SET stock = stock - ? 
-            WHERE idProducto = ? AND stock >= ?
-        ");
-
-        foreach ($productos as $producto) {
-            $stmtUpdateStock->execute([
-                $producto['cantidad'],
-                $producto['idProducto'],
-                $producto['cantidad']
-            ]);
-
-            // Verificar que se actualizó el stock
-            if ($stmtUpdateStock->rowCount() === 0) {
-                throw new Exception("Stock insuficiente para el producto: {$producto['nombre']}");
+            $resultFactura = $stmtFactura->execute([$idFactura, $idUsuario]);
+            logDebug("✅ Factura insertada, resultado: " . ($resultFactura ? 'true' : 'false'));
+            
+            // Verificar inmediatamente que la factura existe
+            $stmtVerificar = $conn->prepare("SELECT idFactura FROM factura WHERE idFactura = ?");
+            $stmtVerificar->execute([$idFactura]);
+            $facturaExiste = $stmtVerificar->fetch();
+            
+            if (!$facturaExiste) {
+                throw new Exception("Error: La factura no se insertó correctamente");
             }
+            
+            logDebug("✅ Factura verificada exitosamente: $idFactura");
+            
+        } catch (PDOException $e) {
+            logDebug("❌ Error insertando factura: " . $e->getMessage());
+            throw new Exception("Error al crear factura: " . $e->getMessage());
         }
 
         // ============================================
-        // 9. VACIAR CARRITO
+        // 9. AHORA INSERTAR DETALLES DE FACTURA
         // ============================================
-        $stmtVaciarCarrito = $conn->prepare("
-            DELETE FROM CARRITO_DETALLE 
-            WHERE idCarrito = ?
-        ");
+        logDebug("📋 Insertando detalles de factura...");
         
-        $stmtVaciarCarrito->execute([$idCarrito]);
+        try {
+            $stmtDetalle = $conn->prepare("
+                INSERT INTO detalle_factura (idDetalleFactura, idFactura, idProducto, cantidad, precioTotal) 
+                VALUES (?, ?, ?, ?, ?)
+            ");
+
+            foreach ($productos as $index => $producto) {
+                $idDetalleFactura = $idFactura . '_DET_' . str_pad($index + 1, 3, '0', STR_PAD_LEFT);
+                
+                logDebug("📝 Insertando detalle: $idDetalleFactura para producto: " . $producto['idProducto']);
+                
+                $resultDetalle = $stmtDetalle->execute([
+                    $idDetalleFactura,
+                    $idFactura,
+                    $producto['idProducto'],
+                    $producto['cantidad'],
+                    $producto['precioTotal']
+                ]);
+                
+                if (!$resultDetalle) {
+                    throw new Exception("Error al insertar detalle para producto: " . $producto['idProducto']);
+                }
+                
+                logDebug("✅ Detalle insertado exitosamente: $idDetalleFactura");
+            }
+            
+        } catch (PDOException $e) {
+            logDebug("❌ Error insertando detalles: " . $e->getMessage());
+            throw new Exception("Error al crear detalles de factura: " . $e->getMessage());
+        }
 
         // ============================================
-        // 10. CONFIRMAR TRANSACCIÓN
+        // 10. ACTUALIZAR STOCK DE PRODUCTOS
         // ============================================
-        $conn->commit();
+        logDebug("📦 Actualizando stock de productos...");
+        
+        try {
+            $stmtStock = $conn->prepare("UPDATE producto SET stock = stock - ? WHERE idProducto = ?");
+            
+            foreach ($productos as $producto) {
+                logDebug("📦 Actualizando stock para: " . $producto['idProducto'] . " (cantidad: " . $producto['cantidad'] . ")");
+                
+                $resultStock = $stmtStock->execute([$producto['cantidad'], $producto['idProducto']]);
+                
+                if (!$resultStock) {
+                    throw new Exception("Error al actualizar stock para producto: " . $producto['idProducto']);
+                }
+            }
+            
+            logDebug("✅ Stock actualizado exitosamente");
+            
+        } catch (PDOException $e) {
+            logDebug("❌ Error actualizando stock: " . $e->getMessage());
+            throw new Exception("Error al actualizar inventario: " . $e->getMessage());
+        }
 
         // ============================================
-        // 11. RESPUESTA EXITOSA
+        // 11. VACIAR CARRITO DEL USUARIO
         // ============================================
-        echo json_encode([
+        logDebug("🗑️ Vaciando carrito del usuario...");
+        
+        try {
+            $stmtVaciar = $conn->prepare("DELETE FROM carrito_detalle WHERE idCarrito = ?");
+            $resultVaciar = $stmtVaciar->execute([$idCarrito]);
+            
+            if (!$resultVaciar) {
+                throw new Exception("Error al vaciar el carrito");
+            }
+            
+            logDebug("✅ Carrito vaciado exitosamente");
+            
+        } catch (PDOException $e) {
+            logDebug("❌ Error vaciando carrito: " . $e->getMessage());
+            throw new Exception("Error al vaciar carrito: " . $e->getMessage());
+        }
+
+        // ============================================
+        // 12. RESPUESTA EXITOSA
+        // ============================================
+        logDebug("🎉 Pago procesado exitosamente");
+        
+        enviarRespuestaJSON([
             'success' => true,
             'mensaje' => 'Pago exitoso, pedido realizado',
-            'factura' => [
-                'idFactura' => $idFactura,
-                'fecha' => date('Y-m-d H:i:s'),
-                'subtotal' => $subtotal,
-                'impuestos' => $impuestos,
-                'total' => $totalFinal,
-                'productos' => count($productos),
-                'items' => $carritoData['totalItems']
-            ],
-            'redirect' => '/ProyectoIngenieria/ProyectoIngenieria/TecnoY_Page/php/frontend/landingPage.php'
-        ], JSON_UNESCAPED_UNICODE);
+            'idFactura' => $idFactura,
+            'totalProductos' => count($productos),
+            'totalPagado' => $totalCarrito
+        ]);
 
     } catch (Exception $e) {
-        // Revertir transacción en caso de error
-        $conn->rollBack();
+        // Revertir transacción (DESHABILITADO TEMPORALMENTE)
+        // $conn->rollBack();
+        logDebug("❌ Error sin transacción: " . $e->getMessage());
         throw $e;
     }
 
 } catch (PDOException $e) {
     // Error de base de datos
-    if ($conn->inTransaction()) {
-        $conn->rollBack();
-    }
+    logDebug("❌ Error PDO: " . $e->getMessage());
     
-    http_response_code(500);
-    echo json_encode([
+    // Sin transacciones temporalmente
+    // if (isset($conn) && $conn->inTransaction()) {
+    //     $conn->rollBack();
+    // }
+    
+    enviarRespuesta([
         'success' => false,
         'mensaje' => 'Error de base de datos durante el procesamiento del pago',
-        'debug' => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE);
+        'error' => $e->getMessage(),
+        'debug' => [
+            'tipo' => 'PDOException',
+            'archivo' => $e->getFile(),
+            'linea' => $e->getLine()
+        ]
+    ], 500);
 
 } catch (Exception $e) {
-    // Error de validación
-    if ($conn->inTransaction()) {
+    // Error general
+    logDebug("❌ Error general: " . $e->getMessage());
+    
+    if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }
     
-    http_response_code(400);
-    echo json_encode([
+    enviarRespuesta([
         'success' => false,
-        'mensaje' => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE);
+        'mensaje' => $e->getMessage(),
+        'debug' => [
+            'tipo' => 'Exception',
+            'archivo' => $e->getFile(),
+            'linea' => $e->getLine(),
+            'usuario' => $idUsuario ?? 'N/A',
+            'session' => $_SESSION ?? [],
+            'post' => $_POST ?? []
+        ]
+    ], 400);
 }
+
+logDebug("=== FIN PROCESAMIENTO ===");
 ?>

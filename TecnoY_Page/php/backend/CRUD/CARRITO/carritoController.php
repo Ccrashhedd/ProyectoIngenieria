@@ -11,6 +11,9 @@
 
 session_start();
 require_once '../../CONEXION/conexion.php';
+
+// Definir constante para evitar ejecución independiente de verificarCarrito.php
+define('INCLUDED_FROM_CONTROLLER', true);
 require_once 'verificarCarrito.php';
 
 // Headers de respuesta
@@ -19,11 +22,33 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// Configuración de errores
+// Configuración de errores (sin mostrar en output para mantener JSON limpio)
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0); // Cambio: no mostrar errores en el output
 ini_set('log_errors', 1);
 ini_set('error_log', '../../../../logs/carrito_debug.log');
+
+// Capturar cualquier output previo y descartarlo
+ob_start();
+
+// ============================================
+// FUNCIÓN HELPER PARA RESPUESTAS JSON LIMPIAS
+// ============================================
+function enviarRespuestaJSON($data, $httpCode = 200) {
+    // Limpiar cualquier output previo
+    if (ob_get_level()) {
+        ob_end_clean();
+    }
+    
+    // Establecer código HTTP si es diferente de 200
+    if ($httpCode !== 200) {
+        http_response_code($httpCode);
+    }
+    
+    // Enviar JSON limpio
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit; // Asegurar que no se ejecute más código
+}
 
 try {
     // ============================================
@@ -61,20 +86,18 @@ try {
         case 'obtener':
         case 'get':
             $resultado = obtenerCarritoUsuario($idUsuario);
-            echo json_encode($resultado, JSON_UNESCAPED_UNICODE);
-            break;
+            enviarRespuestaJSON($resultado);
 
         // ==========================================
         // VERIFICAR/CREAR CARRITO
         // ==========================================
         case 'verificar':
             $idCarrito = verificarOCrearCarrito($idUsuario);
-            echo json_encode([
+            enviarRespuestaJSON([
                 'success' => $idCarrito !== false,
                 'idCarrito' => $idCarrito,
                 'mensaje' => $idCarrito ? 'Carrito verificado/creado exitosamente' : 'Error al acceder al carrito'
-            ], JSON_UNESCAPED_UNICODE);
-            break;
+            ]);
 
         // ==========================================
         // AGREGAR PRODUCTO AL CARRITO
@@ -172,7 +195,7 @@ try {
             $carritoActualizado = obtenerCarritoUsuario($idUsuario);
 
             // Respuesta exitosa
-            echo json_encode([
+            enviarRespuestaJSON([
                 'success' => true,
                 'mensaje' => $mensaje,
                 'producto' => [
@@ -186,8 +209,7 @@ try {
                     'totalCarrito' => $carritoActualizado['totalCarrito'],
                     'totalFinal' => $carritoActualizado['totalFinal']
                 ]
-            ], JSON_UNESCAPED_UNICODE);
-            break;
+            ]);
 
         // ==========================================
         // ACTUALIZAR CANTIDAD
@@ -303,7 +325,7 @@ try {
             }
 
             // Respuesta exitosa
-            echo json_encode([
+            enviarRespuestaJSON([
                 'success' => true,
                 'mensaje' => $accionTexto,
                 'detalleActualizado' => [
@@ -320,7 +342,7 @@ try {
                     'totalCarrito' => $carritoActualizado['totalCarrito'],
                     'totalFinal' => $carritoActualizado['totalFinal']
                 ]
-            ], JSON_UNESCAPED_UNICODE);
+            ]);
             break;
 
         // ==========================================
@@ -417,7 +439,7 @@ try {
             $carritoActualizado = obtenerCarritoUsuario($idUsuario);
 
             // Respuesta exitosa
-            echo json_encode([
+            enviarRespuestaJSON([
                 'success' => true,
                 'mensaje' => $mensaje,
                 'accion' => $accion,
@@ -427,7 +449,7 @@ try {
                     'totalFinal' => $carritoActualizado['totalFinal'],
                     'productos' => $carritoActualizado['productos']
                 ]
-            ], JSON_UNESCAPED_UNICODE);
+            ]);
             break;
 
         // ==========================================
@@ -436,11 +458,11 @@ try {
         case 'contar':
         case 'count':
             $carritoInfo = obtenerCarritoUsuario($idUsuario);
-            echo json_encode([
+            enviarRespuestaJSON([
                 'success' => true,
                 'totalItems' => $carritoInfo['totalItems'],
                 'totalCarrito' => $carritoInfo['totalCarrito']
-            ], JSON_UNESCAPED_UNICODE);
+            ]);
             break;
 
         // ==========================================
@@ -454,10 +476,10 @@ try {
             }
 
             $resultado = verificarProductoEnCarrito($idUsuario, $idProducto);
-            echo json_encode([
+            enviarRespuestaJSON([
                 'success' => true,
                 'producto' => $resultado
-            ], JSON_UNESCAPED_UNICODE);
+            ]);
             break;
 
         // ==========================================
@@ -469,20 +491,18 @@ try {
 
 } catch (Exception $e) {
     // Error de validación o lógica
-    http_response_code(400);
-    echo json_encode([
+    enviarRespuestaJSON([
         'success' => false,
         'mensaje' => $e->getMessage(),
         'accion' => $accion ?? 'desconocida'
-    ], JSON_UNESCAPED_UNICODE);
+    ], 400);
 
 } catch (PDOException $e) {
     // Error de base de datos
-    http_response_code(500);
-    echo json_encode([
+    enviarRespuestaJSON([
         'success' => false,
         'mensaje' => 'Error de conexión a la base de datos',
         'debug' => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE);
+    ], 500);
 }
 ?>

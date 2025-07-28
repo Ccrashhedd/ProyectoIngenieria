@@ -193,6 +193,33 @@ const notifications = {
     }
 };
 
+// ============================================
+// FUNCIÓN HELPER PARA MANEJO SEGURO DE JSON
+// ============================================
+async function procesarRespuestaJSON(response) {
+    console.log('📡 Respuesta del servidor:', response.status);
+    
+    // Verificar que la respuesta es válida antes de parsear JSON
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Obtener como texto primero para debuggear
+    const responseText = await response.text();
+    console.log('📥 Texto de respuesta recibido:', responseText);
+    
+    // Intentar parsear como JSON
+    try {
+        const data = JSON.parse(responseText);
+        console.log('📊 Datos parseados:', data);
+        return data;
+    } catch (e) {
+        console.error('❌ Error al parsear JSON:', e);
+        console.error('📄 Contenido de respuesta:', responseText);
+        throw new Error('La respuesta del servidor no es JSON válido');
+    }
+}
+
 let carritoData = [];
 
 // Cargar carrito al iniciar la página
@@ -210,7 +237,7 @@ function cargarCarrito() {
     carritoContenido.style.display = 'none';
     
     fetch('../backend/CRUD/CARRITO/carritoController.php?accion=obtener')
-        .then(response => response.json())
+        .then(procesarRespuestaJSON)
         .then(data => {
             loading.style.display = 'none';
             
@@ -342,13 +369,13 @@ function cambiarCantidad(carritoDetalleId, nuevaCantidad) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(procesarRespuestaJSON)
     .then(data => {
         if (data.success) {
-            notifications.show(data.message, 'success');
+            notifications.show(data.mensaje || 'Cantidad actualizada', 'success');
             cargarCarrito();
         } else {
-            notifications.show(data.message, 'error');
+            notifications.show(data.mensaje || 'Error al actualizar cantidad', 'error');
             cargarCarrito();
         }
     })
@@ -372,13 +399,13 @@ function eliminarItem(carritoDetalleId) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(procesarRespuestaJSON)
     .then(data => {
         if (data.success) {
-            notifications.show(data.message, 'success');
+            notifications.show(data.mensaje || 'Producto eliminado', 'success');
             cargarCarrito();
         } else {
-            notifications.show(data.message, 'error');
+            notifications.show(data.mensaje || 'Error al eliminar producto', 'error');
         }
     })
     .catch(error => {
@@ -399,13 +426,13 @@ function vaciarCarrito() {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(procesarRespuestaJSON)
     .then(data => {
         if (data.success) {
-            notifications.show(data.message, 'success');
+            notifications.show(data.mensaje || 'Carrito vaciado', 'success');
             cargarCarrito();
         } else {
-            notifications.show(data.message, 'error');
+            notifications.show(data.mensaje || 'Error al vaciar carrito', 'error');
         }
     })
     .catch(error => {
@@ -451,22 +478,46 @@ async function procesarPago() {
     `;
     
     try {
+        // Obtener usuario actual si está disponible
+        const currentUser = '<?php echo isset($_SESSION['usuario']) ? htmlspecialchars($_SESSION['usuario']) : ''; ?>';
+        
+        console.log('👤 Usuario actual:', currentUser);
+        console.log('🛒 Datos del carrito:', carritoData);
+        console.log('💰 Totales del carrito:', window.carritoTotales);
+        
+        // Verificar que tenemos datos necesarios
+        if (carritoData.length === 0) {
+            throw new Error('El carrito está vacío');
+        }
+        
+        const formData = new FormData();
+        formData.append('accion', 'procesar_pago');
+        if (currentUser) {
+            formData.append('idUsuario', currentUser);
+        }
+        
+        // Log de datos que se envían
+        console.log('📤 Enviando datos:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`  ${key}: ${value}`);
+        }
+        
         const response = await fetch('../backend/CRUD/CARRITO/carritoFactura.php', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: 'accion=procesar_pago'
+            body: formData
         });
         
-        const data = await response.json();
+        console.log('📡 Status de respuesta:', response.status);
+        console.log('📡 Headers de respuesta:', response.headers);
+        
+        const data = await procesarRespuestaJSON(response);
         
         if (data.success) {
             // Cerrar modal
             cerrarModal();
             
             // Mostrar mensaje de éxito
-            notifications.show('Pago exitoso, pedido realizado', 'success', 8000);
+            notifications.show(data.mensaje || 'Pago exitoso, pedido realizado', 'success', 8000);
             
             // Recargar carrito (debería estar vacío ahora)
             setTimeout(() => {
@@ -482,6 +533,15 @@ async function procesarPago() {
             
         } else {
             notifications.show(data.mensaje || 'Error al procesar el pago', 'error');
+            
+            // Mostrar información de debug si está disponible
+            if (data.debug) {
+                console.log('🐛 Debug info:', data.debug);
+                
+                if (!data.debug.session_usuario) {
+                    notifications.show('Es necesario iniciar sesión para realizar el pago', 'error');
+                }
+            }
         }
         
     } catch (error) {
