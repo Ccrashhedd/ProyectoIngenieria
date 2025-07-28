@@ -48,6 +48,7 @@ try {
         <div class="categoria-select-container">
             <select id="categoriaSelect" class="form-input">
                 <option value="" disabled selected>Seleccione una categoría</option>
+                <option value="todas" data-img="">Todas las categorías</option>
                 <?php foreach ($categorias as $cat): ?>
                     <option 
                         value="<?= htmlspecialchars($cat['id']) ?>" 
@@ -69,32 +70,127 @@ const productosCards = document.getElementById('productosCards');
 categoriaSelect.addEventListener('change', function() {
     const selected = categoriaSelect.options[categoriaSelect.selectedIndex];
     const img = selected.getAttribute('data-img');
-    categoriaPreview.innerHTML = img ? `<img src="${img}" alt="" style="height:60px;border-radius:8px;">` : '';
+    const valorSeleccionado = this.value; // Guardar referencia para usar en callbacks
+    
+    // Mostrar preview de la categoría seleccionada (solo para categorías individuales)
+    if (valorSeleccionado === 'todas') {
+        categoriaPreview.innerHTML = '<span style="color: var(--secondary-color); font-weight: bold;">Mostrando todas las categorías</span>';
+    } else {
+        categoriaPreview.innerHTML = img ? `<img src="${img}" alt="Categoría" style="height:60px;border-radius:8px;">` : '';
+    }
 
-    if (!this.value) {
+    // Si no hay selección, limpiar productos
+    if (!valorSeleccionado) {
         productosCards.innerHTML = '';
         return;
     }
 
-    fetch(`../../php/backend/prodXCat.php?categoria_id=${this.value}`)
-        .then(res => res.json())
+    // Mostrar indicador de carga
+    productosCards.innerHTML = '<div class="loading-state">Cargando productos...</div>';
+
+    // Determinar qué endpoint usar según la selección
+    let fetchUrl;
+    if (valorSeleccionado === 'todas') {
+        fetchUrl = '../backend/todasCategorias.php';
+    } else {
+        fetchUrl = `../backend/prodXCat.php?categoria_id=${valorSeleccionado}`;
+    }
+
+    // Hacer petición para obtener productos
+    fetch(fetchUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.length === 0) {
-                productosCards.innerHTML = '<p class="empty-state">No hay productos en esta categoría.</p>';
+            // Verificar si hay error en la respuesta
+            if (data.error) {
+                throw new Error(data.mensaje || 'Error al cargar productos');
+            }
+            
+            // Si no hay datos
+            if (!data || data.length === 0) {
+                productosCards.innerHTML = '<p class="empty-state">No hay productos disponibles.</p>';
                 return;
             }
-            productosCards.innerHTML = data.map(prod => `
-                <div class="producto-card">
-                    <img src="../../${prod.imagen}" alt="${prod.nombre}" class="producto-img" style="width:90px;height:90px;object-fit:cover;border-radius:10px;">
-                    <div class="producto-info">
-                        <h4>${prod.nombre}</h4>
-                        <p>${prod.descripcion}</p>
-                        <span class="producto-precio">$${parseFloat(prod.precio).toFixed(2)}</span>
-                    </div>
+            
+            // Renderizar según el tipo de vista
+            if (valorSeleccionado === 'todas') {
+                renderTodasCategorias(data);
+            } else {
+                renderProductosCategoria(data);
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar productos:', error);
+            productosCards.innerHTML = `
+                <div class="error-state">
+                    <p>Error al cargar productos: ${error.message}</p>
+                    <button onclick="location.reload()" class="retry-btn">Reintentar</button>
                 </div>
-            `).join('');
+            `;
         });
 });
+
+// Función para renderizar productos de una sola categoría
+function renderProductosCategoria(productos) {
+    productosCards.innerHTML = productos.map(prod => `
+        <div class="producto-card">
+            <img src="../../${prod.imagen}" alt="${prod.nombre}" class="producto-img" 
+                 style="width:90px;height:90px;object-fit:cover;border-radius:10px;"
+                 onerror="this.src='../../image/placeholder.png'">
+            <div class="producto-info">
+                <h4>${prod.nombre}</h4>
+                <p>${prod.descripcion || 'Sin descripción'}</p>
+                <div class="producto-detalles">
+                    <span class="producto-precio">$${parseFloat(prod.precio).toFixed(2)}</span>
+                    <span class="producto-stock">Stock: ${prod.stock}</span>
+                    <span class="producto-marca">Marca: ${prod.marca}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Función para renderizar todas las categorías con sus productos
+function renderTodasCategorias(categorias) {
+    let htmlContent = '';
+    
+    categorias.forEach(categoria => {
+        if (categoria.productos && categoria.productos.length > 0) {
+            htmlContent += `
+                <div class="categoria-section">
+                    <div class="categoria-header">
+                        <img src="../../${categoria.imagen}" alt="${categoria.nombre}" class="categoria-icon">
+                        <h3 class="categoria-titulo">${categoria.nombre}</h3>
+                        <span class="categoria-count">${categoria.productos.length} producto${categoria.productos.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="categoria-productos">
+                        ${categoria.productos.map(prod => `
+                            <div class="producto-card-mini">
+                                <img src="../../${prod.imagen}" alt="${prod.nombre}" class="producto-img-mini" 
+                                     onerror="this.src='../../image/placeholder.png'">
+                                <div class="producto-info-mini">
+                                    <h5>${prod.nombre}</h5>
+                                    <p>${prod.descripcion || 'Sin descripción'}</p>
+                                    <div class="producto-detalles-mini">
+                                        <span class="producto-precio">$${parseFloat(prod.precio).toFixed(2)}</span>
+                                        <span class="producto-stock">Stock: ${prod.stock}</span>
+                                        <span class="producto-marca">${prod.marca}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    productosCards.innerHTML = htmlContent || '<p class="empty-state">No hay productos disponibles en ninguna categoría.</p>';
+}
 </script>
 
 <!-- Footer -->
