@@ -43,6 +43,7 @@ try {
                 p.precio,
                 p.stock,
                 p.imagen,
+                p.idMarca,
                 m.nombMarca
             FROM PRODUCTO p
             INNER JOIN MARCA m ON p.idMarca = m.idMarca
@@ -63,7 +64,8 @@ try {
                 'precio' => floatval($producto['precio']),
                 'imagen' => $producto['imagen'],
                 'stock' => intval($producto['stock']),
-                'marca' => $producto['nombMarca']
+                'marca' => $producto['nombMarca'],
+                'marca_id' => $producto['idMarca']
             ];
         }
         
