@@ -273,8 +273,8 @@ select.form-input option {
     color: var(--text-primary);
 }
 
-/* Modal de producto */
-.modal-producto {
+/* Modal personalizado */
+.custom-modal {
     position: fixed;
     z-index: 9999;
     left: 0; top: 0; right: 0; bottom: 0;
@@ -285,7 +285,7 @@ select.form-input option {
     backdrop-filter: blur(5px);
 }
 
-.modal-producto-content {
+.custom-modal-content {
     background: rgba(26, 26, 26, 0.98);
     border: 2px solid var(--primary-color);
     border-radius: 18px;
@@ -299,7 +299,7 @@ select.form-input option {
     color: var(--text-primary);
 }
 
-.modal-close {
+.custom-modal-close {
     position: absolute;
     top: 16px; right: 20px;
     font-size: 2.2rem;
@@ -309,7 +309,7 @@ select.form-input option {
     line-height: 1;
 }
 
-.modal-close:hover {
+.custom-modal-close:hover {
     color: var(--danger-color);
     transform: scale(1.1);
 }
