@@ -1,12 +1,12 @@
 <?php
 /**
  * ============================================
- * SISTEMA DE FACTURACIÓN COMPLETO - VERSIÓN FINAL
- * Archivo: carritoFactura.php
+ * COORDINADOR DE FACTURACIÓN MODULAR - VERSION FINAL
+ * Archivo: carritoFacturaModular.php
  * Ubicación: /php/backend/CRUD/CARRITO/
  * 
- * Descripción: Procesa el pago del carrito y genera la factura
- * Incluye: subtotal, ITBMS, total en la tabla FACTURA
+ * Descripción: Coordina todo el proceso de facturación usando módulos separados
+ * Módulos: facturaCreador.php, detalleFacturaCreador.php, inventarioActualizador.php
  * ============================================
  */
 
@@ -36,6 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+// Importar los módulos especializados
+require_once 'facturaCreador.php';
+require_once 'detalleFacturaCreador.php';
+require_once 'inventarioActualizador.php';
+
 /**
  * Envía respuesta JSON y termina la ejecución
  */
@@ -55,45 +60,10 @@ function enviarRespuesta($data, $httpCode = 200) {
 function logDebug($mensaje) {
     $archivo = __DIR__ . '/../../../../debug_factura.log';
     $timestamp = date('Y-m-d H:i:s');
-    $logLine = "[$timestamp] [FACTURA] $mensaje" . PHP_EOL;
+    $logLine = "[$timestamp] [COORDINADOR-MODULAR] $mensaje" . PHP_EOL;
     
     file_put_contents($archivo, $logLine, FILE_APPEND | LOCK_EX);
-    error_log("[FACTURA] " . $mensaje);
-}
-
-/**
- * Genera un ID único para la factura (optimizado para máximo 40 caracteres)
- */
-function generarIdFactura($idUsuario, $conn) {
-    $maxIntentos = 5;
-    $intento = 0;
-    
-    do {
-        // Formato optimizado: FAC + timestamp(10) + usuario hash(8) + random(4) = ~27 chars
-        $timestamp = date('ymdHis'); // 12 caracteres: yymmddhhmmss
-        $usuarioHash = substr(md5($idUsuario), 0, 6); // 6 caracteres hash del usuario
-        $random = rand(1000, 9999); // 4 dígitos
-        
-        $idFactura = "FAC{$timestamp}{$usuarioHash}{$random}";
-        
-        // Verificar que no existe
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM FACTURA WHERE idFactura = ?");
-        $stmt->execute([$idFactura]);
-        $existe = $stmt->fetchColumn() > 0;
-        
-        $intento++;
-        
-        if (!$existe) {
-            logDebug("✅ ID generado: $idFactura (longitud: " . strlen($idFactura) . ")");
-            return $idFactura;
-        }
-        
-        // Esperar un poco antes del siguiente intento
-        usleep(10000); // 10ms
-        
-    } while ($intento < $maxIntentos);
-    
-    throw new Exception("No se pudo generar un ID único para la factura después de $maxIntentos intentos");
+    error_log("[COORDINADOR-MODULAR] " . $mensaje);
 }
 
 /**
@@ -126,11 +96,11 @@ function conectarBaseDatos() {
 }
 
 // ============================================
-// PROCESAMIENTO PRINCIPAL
+// PROCESAMIENTO PRINCIPAL - ARQUITECTURA MODULAR
 // ============================================
 
 try {
-    logDebug("=== INICIO PROCESAMIENTO DE FACTURACIÓN ===");
+    logDebug("=== INICIO PROCESAMIENTO MODULAR DE FACTURACIÓN ===");
     logDebug("Método: " . $_SERVER['REQUEST_METHOD']);
     logDebug("Sesión usuario: " . ($_SESSION['usuario'] ?? 'No definido'));
     logDebug("POST data: " . json_encode($_POST));
@@ -143,25 +113,16 @@ try {
     // 2. VALIDAR ACCIÓN
     $accion = $_POST['accion'] ?? '';
     if ($accion !== 'procesar_pago') {
-        throw new Exception('Acción no válida. Se requiere "procesar_pago".');
+        throw new Exception('Acción no válida. Se esperaba "procesar_pago".');
     }
 
-    // 3. OBTENER Y VALIDAR USUARIO
-    $idUsuario = $_SESSION['usuario'] ?? $_POST['idUsuario'] ?? null;
-    
-    if (empty($idUsuario)) {
-        enviarRespuesta([
-            'success' => false,
-            'mensaje' => 'Usuario no identificado. Debe iniciar sesión para realizar el pago.',
-            'debug' => [
-                'session_usuario' => isset($_SESSION['usuario']),
-                'post_usuario' => isset($_POST['idUsuario']),
-                'session_data' => $_SESSION ?? []
-            ]
-        ], 401);
+    // 3. VALIDAR SESIÓN
+    if (!isset($_SESSION['usuario'])) {
+        throw new Exception('Usuario no autenticado. Debe iniciar sesión para proceder con el pago.');
     }
 
-    logDebug("Usuario identificado: $idUsuario");
+    $idUsuario = $_SESSION['usuario'];
+    logDebug("👤 Usuario autenticado: $idUsuario");
 
     // 4. CONECTAR A BASE DE DATOS
     $conn = conectarBaseDatos();
@@ -171,9 +132,15 @@ try {
     logDebug("🔄 Transacción iniciada");
 
     try {
-        // 6. OBTENER CARRITO DEL USUARIO
-        logDebug("📦 Obteniendo carrito del usuario...");
-        
+        // 6. CREAR INSTANCIAS DE LOS MÓDULOS
+        logDebug("🔧 Creando módulos especializados...");
+        $facturaCreador = new FacturaCreador($conn);
+        $detalleFacturaCreador = new DetalleFacturaCreador($conn);
+        $inventarioActualizador = new InventarioActualizador($conn);
+        logDebug("✅ Módulos especializados creados");
+
+        // 7. OBTENER CARRITO DEL USUARIO
+        logDebug("🛒 Buscando carrito del usuario...");
         $stmtCarrito = $conn->prepare("
             SELECT idCarrito 
             FROM CARRITO 
@@ -189,9 +156,8 @@ try {
         $idCarrito = $carrito['idCarrito'];
         logDebug("✅ Carrito encontrado: $idCarrito");
 
-        // 7. OBTENER PRODUCTOS DEL CARRITO
+        // 8. OBTENER PRODUCTOS DEL CARRITO
         logDebug("🛍️ Obteniendo productos del carrito...");
-        
         $stmtProductos = $conn->prepare("
             SELECT 
                 cd.idCarritoDetalle,
@@ -217,108 +183,52 @@ try {
 
         logDebug("✅ Productos en carrito: " . count($productosCarrito));
 
-        // 8. VALIDAR STOCK DISPONIBLE
-        logDebug("📊 Validando stock disponible...");
+        // 9. VERIFICAR STOCK CON MÓDULO ESPECIALIZADO
+        logDebug("📊 Verificando stock con módulo especializado...");
+        $verificacionStock = $inventarioActualizador->verificarStock($productosCarrito);
         
-        foreach ($productosCarrito as $item) {
-            if ($item['cantidad'] > $item['stock']) {
-                throw new Exception("Stock insuficiente para {$item['nombProducto']}. Stock disponible: {$item['stock']}, solicitado: {$item['cantidad']}");
+        if (!$verificacionStock['success']) {
+            $mensaje = "Stock insuficiente para los siguientes productos:\n";
+            foreach ($verificacionStock['stockInsuficiente'] as $item) {
+                $mensaje .= "• {$item['nombreProducto']}: Disponible {$item['stockActual']}, Solicitado {$item['cantidadSolicitada']}\n";
             }
+            throw new Exception($mensaje);
         }
 
-        logDebug("✅ Stock validado correctamente");
-
-        // 9. CALCULAR TOTALES
-        $subtotal = 0;
-        $totalItems = 0;
+        // 10. CREAR FACTURA PRINCIPAL CON MÓDULO ESPECIALIZADO
+        logDebug("🧾 Creando factura principal con módulo...");
+        $resultadoFactura = $facturaCreador->crearFactura($idUsuario, $productosCarrito);
         
-        foreach ($productosCarrito as $item) {
-            $subtotal += floatval($item['precioTotal']);
-            $totalItems += intval($item['cantidad']);
+        if (!$resultadoFactura['success']) {
+            throw new Exception("Error al crear factura: " . ($resultadoFactura['error'] ?? 'Error desconocido'));
         }
         
-        $impuestos = round($subtotal * 0.07, 2); // ITBMS 7%
-        $total = round($subtotal + $impuestos, 2);
-        
-        logDebug("💰 Cálculos: Subtotal=$subtotal, Impuestos=$impuestos, Total=$total, Items=$totalItems");
+        $idFactura = $resultadoFactura['idFactura'];
+        $totales = $resultadoFactura['totales'];
+        logDebug("✅ Factura creada: $idFactura");
 
-        // 10. GENERAR ID DE FACTURA
-        $idFactura = generarIdFactura($idUsuario, $conn);
-        logDebug("📄 ID de factura generado: $idFactura");
-
-        // 11. CREAR REGISTRO DE FACTURA (CON TOTALES)
-        logDebug("🧾 Creando factura con totales...");
-        logDebug("📄 Datos a insertar: ID=$idFactura, Usuario=$idUsuario, Subtotal=$subtotal, ITBMS=$impuestos, Total=$total");
+        // 11. CREAR DETALLES DE FACTURA CON MÓDULO ESPECIALIZADO
+        logDebug("📋 Creando detalles de factura con módulo...");
+        $resultadoDetalles = $detalleFacturaCreador->crearDetalles($idFactura, $productosCarrito);
         
-        $stmtFactura = $conn->prepare("
-            INSERT INTO FACTURA (idFactura, fecha, hora, idUsuario, subtotal, ITBMS, total) 
-            VALUES (?, CURDATE(), CURTIME(), ?, ?, ?, ?)
-        ");
-        
-        $resultFactura = $stmtFactura->execute([$idFactura, $idUsuario, $subtotal, $impuestos, $total]);
-        
-        if (!$resultFactura) {
-            throw new Exception("Error al crear la factura");
+        if (!$resultadoDetalles['success']) {
+            throw new Exception("Error al crear detalles de factura: " . ($resultadoDetalles['error'] ?? 'Error desconocido'));
         }
         
-        logDebug("✅ Factura creada exitosamente con totales - continuando con detalles...");
+        logDebug("✅ Detalles de factura creados: " . count($resultadoDetalles['detallesCreados']));
 
-        // 12. CREAR DETALLES DE FACTURA
-        logDebug("📋 Creando detalles de factura...");
-        logDebug("📋 Factura padre para detalles: $idFactura");
+        // 12. ACTUALIZAR INVENTARIO CON MÓDULO ESPECIALIZADO
+        logDebug("📦 Actualizando inventario con módulo...");
+        $resultadoInventario = $inventarioActualizador->actualizarStock($productosCarrito);
         
-        $stmtDetalle = $conn->prepare("
-            INSERT INTO DETALLE_FACTURA (idDetalleFactura, idFactura, idProducto, cantidad, precioTotal) 
-            VALUES (?, ?, ?, ?, ?)
-        ");
-
-        foreach ($productosCarrito as $index => $item) {
-            // Formato optimizado para detalle: idFactura + D + índice
-            $idDetalleFactura = $idFactura . 'D' . str_pad($index + 1, 3, '0', STR_PAD_LEFT);
-            
-            logDebug("📋 Insertando detalle: $idDetalleFactura para factura: $idFactura");
-            
-            $resultDetalle = $stmtDetalle->execute([
-                $idDetalleFactura,
-                $idFactura,
-                $item['idProducto'],
-                $item['cantidad'],
-                $item['precioTotal']
-            ]);
-            
-            if (!$resultDetalle) {
-                throw new Exception("Error al crear detalle de factura para producto: " . $item['nombProducto']);
-            }
-            
-            logDebug("✅ Detalle creado: $idDetalleFactura - {$item['nombProducto']}");
+        if (!$resultadoInventario['success']) {
+            throw new Exception("Error al actualizar inventario: " . ($resultadoInventario['error'] ?? 'Error desconocido'));
         }
-
-        // 13. ACTUALIZAR STOCK DE PRODUCTOS
-        logDebug("📦 Actualizando inventario...");
         
-        $stmtStock = $conn->prepare("
-            UPDATE PRODUCTO 
-            SET stock = stock - ? 
-            WHERE idProducto = ? AND stock >= ?
-        ");
+        logDebug("✅ Inventario actualizado: " . count($resultadoInventario['actualizaciones']));
 
-        foreach ($productosCarrito as $item) {
-            $resultStock = $stmtStock->execute([
-                $item['cantidad'], 
-                $item['idProducto'], 
-                $item['cantidad']
-            ]);
-            
-            if ($stmtStock->rowCount() === 0) {
-                throw new Exception("No se pudo actualizar el stock para: " . $item['nombProducto'] . ". Posible stock insuficiente.");
-            }
-            
-            logDebug("✅ Stock actualizado: {$item['nombProducto']} (-{$item['cantidad']})");
-        }
-
-        // 14. LIMPIAR CARRITO
+        // 13. LIMPIAR CARRITO
         logDebug("🗑️ Limpiando carrito...");
-        
         $stmtLimpiar = $conn->prepare("DELETE FROM CARRITO_DETALLE WHERE idCarrito = ?");
         $resultLimpiar = $stmtLimpiar->execute([$idCarrito]);
         
@@ -328,23 +238,25 @@ try {
         
         logDebug("✅ Carrito limpiado exitosamente");
 
-        // 15. CONFIRMAR TRANSACCIÓN
+        // 14. CONFIRMAR TRANSACCIÓN
         $conn->commit();
-        logDebug("🎉 Transacción completada exitosamente");
+        logDebug("🎉 Transacción modular completada exitosamente");
 
-        // 16. RESPUESTA EXITOSA
+        // 15. RESPUESTA EXITOSA CON DATOS COMPLETOS
         enviarRespuesta([
             'success' => true,
             'mensaje' => '¡Pago procesado exitosamente! Su pedido ha sido registrado.',
             'datos' => [
                 'idFactura' => $idFactura,
                 'totalProductos' => count($productosCarrito),
-                'totalItems' => $totalItems,
-                'subtotal' => $subtotal,
-                'impuestos' => $impuestos,
-                'total' => $total,
+                'totalItems' => $totales['totalItems'],
+                'subtotal' => $totales['subtotal'],
+                'impuestos' => $totales['impuestos'],
+                'total' => $totales['total'],
                 'fecha' => date('Y-m-d'),
-                'hora' => date('H:i:s')
+                'hora' => date('H:i:s'),
+                'detalles' => $resultadoDetalles['detalles'],
+                'actualizacionesInventario' => $resultadoInventario['actualizaciones']
             ],
             'redirect' => 'landingPage.php'
         ]);
@@ -352,7 +264,7 @@ try {
     } catch (Exception $e) {
         // Revertir transacción en caso de error
         $conn->rollBack();
-        logDebug("❌ Transacción revertida: " . $e->getMessage());
+        logDebug("❌ Transacción modular revertida: " . $e->getMessage());
         throw $e;
     }
 

@@ -93,8 +93,8 @@ function obtenerTodosPedidos($conn) {
                 f.fecha,
                 f.hora,
                 f.idUsuario,
-                u.nombre_usuario,
-                u.email,
+                u.nombUsuario as nombre_usuario,
+                u.emailUsuario as email,
                 COUNT(df.idDetalleFactura) as totalProductos,
                 SUM(df.precioTotal) as totalPedido,
                 CONCAT(f.fecha, ' ', f.hora) as fechaCompleta
@@ -153,8 +153,8 @@ function obtenerDetallePedidoAdmin($conn, $idFactura) {
                 f.fecha,
                 f.hora,
                 f.idUsuario,
-                u.nombre_usuario,
-                u.email
+                u.nombUsuario as nombre_usuario,
+                u.emailUsuario as email
             FROM factura f
             JOIN usuario u ON f.idUsuario = u.idUsuario
             WHERE f.idFactura = ?

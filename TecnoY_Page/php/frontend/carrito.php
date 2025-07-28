@@ -512,7 +512,7 @@ async function procesarPago() {
             console.log(`  ${key}: ${value}`);
         }
         
-        const response = await fetch('../backend/CRUD/CARRITO/carritoFactura.php', {
+        const response = await fetch('../backend/CRUD/CARRITO/carritoFacturaModular.php', {
             method: 'POST',
             body: formData,
             headers: {
