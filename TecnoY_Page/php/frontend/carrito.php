@@ -209,13 +209,13 @@ function cargarCarrito() {
     carritoVacio.style.display = 'none';
     carritoContenido.style.display = 'none';
     
-    fetch('../../php/backend/carrito.php?accion=obtener')
+    fetch('../backend/CRUD/CARRITO/carritoController.php?accion=obtener')
         .then(response => response.json())
         .then(data => {
             loading.style.display = 'none';
             
-            if (data.success && data.carrito.length > 0) {
-                carritoData = data.carrito;
+            if (data.success && data.productos && data.productos.length > 0) {
+                carritoData = data.productos;
                 mostrarCarrito();
                 carritoContenido.style.display = 'block';
             } else {
@@ -244,7 +244,7 @@ function mostrarCarrito() {
         totalItems += parseInt(item.cantidad);
         
         const itemHtml = `
-        <div class="carrito-item" data-carrito-id="${item.id}" style="animation-delay: ${index * 0.1}s">
+        <div class="carrito-item" data-carrito-id="${item.idDetalle}" style="animation-delay: ${index * 0.1}s">
             <div class="item-imagen">
                 <img src="../../${item.imagen}" alt="${item.nombre}" onerror="this.src='../../image/default-product.png'">
             </div>
@@ -263,14 +263,14 @@ function mostrarCarrito() {
                     <div class="item-cantidad">
                         <label class="cantidad-label">Cantidad:</label>
                         <div class="cantidad-controls">
-                            <button class="btn-cantidad btn-decrease" onclick="cambiarCantidad(${item.id}, ${parseInt(item.cantidad) - 1})" ${parseInt(item.cantidad) <= 1 ? 'disabled' : ''}>
+                            <button class="btn-cantidad btn-decrease" onclick="cambiarCantidad('${item.idDetalle}', ${parseInt(item.cantidad) - 1})" ${parseInt(item.cantidad) <= 1 ? 'disabled' : ''}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <line x1="5" y1="12" x2="19" y2="12"/>
                                 </svg>
                             </button>
                             <input type="number" value="${item.cantidad}" min="1" max="${parseInt(item.stock) + parseInt(item.cantidad)}" 
-                                   onchange="cambiarCantidad(${item.id}, this.value)" class="cantidad-input">
-                            <button class="btn-cantidad btn-increase" onclick="cambiarCantidad(${item.id}, ${parseInt(item.cantidad) + 1})" ${parseInt(item.cantidad) >= parseInt(item.stock) + parseInt(item.cantidad) ? 'disabled' : ''}>
+                                   onchange="cambiarCantidad('${item.idDetalle}', this.value)" class="cantidad-input">
+                            <button class="btn-cantidad btn-increase" onclick="cambiarCantidad('${item.idDetalle}', ${parseInt(item.cantidad) + 1})" ${parseInt(item.cantidad) >= parseInt(item.stock) + parseInt(item.cantidad) ? 'disabled' : ''}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <line x1="12" y1="5" x2="12" y2="19"/>
                                     <line x1="5" y1="12" x2="19" y2="12"/>
@@ -283,7 +283,7 @@ function mostrarCarrito() {
                             <span class="subtotal-label">Subtotal:</span>
                             <span class="subtotal-valor">$${itemSubtotal.toFixed(2)}</span>
                         </div>
-                        <button class="btn-eliminar" onclick="eliminarItem(${item.id})" title="Eliminar producto">
+                        <button class="btn-eliminar" onclick="eliminarItem('${item.idDetalle}')" title="Eliminar producto">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="3,6 5,6 21,6"/>
                                 <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
@@ -317,20 +317,20 @@ function mostrarCarrito() {
     }, 100);
 }
 
-function cambiarCantidad(carritoId, nuevaCantidad) {
+function cambiarCantidad(carritoDetalleId, nuevaCantidad) {
     nuevaCantidad = parseInt(nuevaCantidad);
     
     if (nuevaCantidad <= 0) {
-        eliminarItem(carritoId);
+        eliminarItem(carritoDetalleId);
         return;
     }
     
     const formData = new FormData();
     formData.append('accion', 'actualizar');
-    formData.append('carrito_id', carritoId);
+    formData.append('idCarritoDetalle', carritoDetalleId);
     formData.append('cantidad', nuevaCantidad);
     
-    fetch('../../php/backend/carrito.php', {
+    fetch('../backend/CRUD/CARRITO/carritoController.php', {
         method: 'POST',
         body: formData
     })
@@ -351,16 +351,16 @@ function cambiarCantidad(carritoId, nuevaCantidad) {
     });
 }
 
-function eliminarItem(carritoId) {
+function eliminarItem(carritoDetalleId) {
     if (!confirm('¿Estás seguro de que quieres eliminar este producto del carrito?')) {
         return;
     }
     
     const formData = new FormData();
     formData.append('accion', 'eliminar');
-    formData.append('carrito_id', carritoId);
+    formData.append('idCarritoDetalle', carritoDetalleId);
     
-    fetch('../../php/backend/carrito.php', {
+    fetch('../backend/CRUD/CARRITO/carritoController.php', {
         method: 'POST',
         body: formData
     })
@@ -387,7 +387,7 @@ function vaciarCarrito() {
     const formData = new FormData();
     formData.append('accion', 'vaciar');
     
-    fetch('../../php/backend/carrito.php', {
+    fetch('../backend/CRUD/CARRITO/carritoController.php', {
         method: 'POST',
         body: formData
     })
@@ -414,6 +414,7 @@ function procederCheckout() {
 
     <!-- Scripts para header dinámico -->
     <script src="../../JS/usuarioSesion.js"></script>
+    <script src="../../JS/carritoManager.js"></script>
     <script>
     // Configurar sesión si existe
     document.addEventListener('DOMContentLoaded', function() {
@@ -434,5 +435,20 @@ function procederCheckout() {
         }, 100);
     });
     </script>
+    <dialog>
+        <div>
+            <div>
+                <label>Subtotal:</label>
+                <input type="text" id="subtotal-dialog" value="$0.00" readonly>
+                <label>ITBMS:</label>
+                <input type="text" id="impuestos-dialog" value="$0.00" readonly>
+                <label>Total:</label>
+                <input type="text" id="total-dialog" value="$0.00" readonly>
+
+            </div>
+
+            <button>PAGAR</button>
+        </div>
+    </dialog>
 </body>
 </html>

@@ -93,7 +93,7 @@ try {
     // ============================================
     // 7. DETERMINAR REDIRECCIÓN
     // ============================================
-    $base_url = '/ProyectoIngenieria/TecnoY_Page/php/frontend/';
+    $base_url = '/ProyectoIngenieria/ProyectoIngenieria/TecnoY_Page/php/frontend/';
     
     if ($usuario['idRango'] == 1) {
         // Administrador

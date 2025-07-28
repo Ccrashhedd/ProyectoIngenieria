@@ -187,9 +187,10 @@ function verificarProductoEnCarrito($idUsuario, $idProducto) {
 }
 
 // Funciones para uso directo via AJAX
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !defined('INCLUDED_FROM_CONTROLLER')) {
     header('Content-Type: application/json');
     
+    session_start();
     $accion = $_POST['accion'] ?? '';
     $idUsuario = $_SESSION['usuario'] ?? $_POST['idUsuario'] ?? '';
     

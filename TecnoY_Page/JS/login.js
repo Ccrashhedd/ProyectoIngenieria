@@ -17,7 +17,7 @@ class LoginManager {
     // Construir URL absoluta
     buildUrl(relativePath) {
         const baseUrl = window.location.origin;
-        const projectPath = '/ProyectoIngenieria/TecnoY_Page';
+        const projectPath = '/ProyectoIngenieria/ProyectoIngenieria/TecnoY_Page';
         return `${baseUrl}${projectPath}${relativePath}`;
     }
 
