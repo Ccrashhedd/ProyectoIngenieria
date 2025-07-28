@@ -174,21 +174,31 @@ class UsuarioSesion {
 
     // Vincular eventos a los botones
     bindEventListeners() {
-        // Botones de navegación
-        this.bindEvent('btnCatalogo', () => this.irACatalogo());
-        this.bindEvent('btnCarrito', () => this.irACarrito());
-        
-        // Botones de administrador
-        this.bindEvent('btnProductos', () => this.irAProductos());
-        this.bindEvent('btnCategyMarc', () => this.irACategorias());
-        this.bindEvent('btnPedidos', () => this.irAPedidos());
-        
-        // Botones de usuario
-        this.bindEvent('btnHistorialClient', () => this.irAHistorial());
-        
-        // Botones de sesión
-        this.bindEvent('btnIniciarSesion', () => this.irALogin());
-        this.bindEvent('btnCerrarSesion', () => this.cerrarSesion());
+        // Pequeño delay para asegurar que el DOM esté actualizado
+        setTimeout(() => {
+            console.log('🔧 Iniciando binding de eventos...');
+            
+            // Botones de navegación
+            this.bindEvent('btnCatalogo', () => this.irACatalogo());
+            this.bindEvent('btnCarrito', () => this.irACarrito());
+            
+            // Botones de administrador
+            this.bindEvent('btnProductos', () => this.irAProductos());
+            this.bindEvent('btnCategyMarc', () => this.irACategorias());
+            this.bindEvent('btnPedidos', () => {
+                console.log('🎯 Click en btnPedidos detectado!');
+                this.irAPedidos();
+            });
+            
+            // Botones de usuario
+            this.bindEvent('btnHistorialClient', () => this.irAHistorial());
+            
+            // Botones de sesión
+            this.bindEvent('btnIniciarSesion', () => this.irALogin());
+            this.bindEvent('btnCerrarSesion', () => this.cerrarSesion());
+            
+            console.log('✅ Binding de eventos completado');
+        }, 50);
     }
 
     // Método auxiliar para vincular eventos
@@ -196,6 +206,9 @@ class UsuarioSesion {
         const element = document.getElementById(elementId);
         if (element) {
             element.addEventListener('click', callback);
+            console.log(`✅ Evento vinculado a ${elementId}`);
+        } else {
+            console.warn(`⚠️ Elemento ${elementId} no encontrado para binding`);
         }
     }
 
@@ -217,11 +230,14 @@ class UsuarioSesion {
     }
 
     irAPedidos() {
-        window.location.href = this.buildUrl('/php/frontend/pedidos.php');
+        console.log('🚀 irAPedidos() ejecutándose...');
+        const url = this.buildUrl('/php/frontend/pedidosGeneral.php');
+        console.log('📍 URL construida:', url);
+        window.location.href = url;
     }
 
     irAHistorial() {
-        window.location.href = this.buildUrl('/php/frontend/historial.php');
+        window.location.href = this.buildUrl('/php/frontend/historialCliente.php');
     }
 
     irALogin() {

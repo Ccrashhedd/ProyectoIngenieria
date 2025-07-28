@@ -3,7 +3,7 @@ session_start();
 
 // Verificar que el usuario esté logueado y sea admin
 if (!isset($_SESSION['usuario']) || !isset($_SESSION['admin']) || $_SESSION['admin'] != 1) {
-    header('Location: ../frontend/landingPage.php');
+    header('Location: landingPage.php');
     exit();
 }
 ?>

@@ -467,6 +467,12 @@ async function procesarPago() {
     const btnPagar = document.getElementById('btn-pagar');
     const originalText = btnPagar.innerHTML;
     
+    // Evitar doble ejecución
+    if (btnPagar.disabled) {
+        console.log('⚠️ Pago ya en proceso, ignorando...');
+        return;
+    }
+    
     // Mostrar estado de carga
     btnPagar.disabled = true;
     btnPagar.innerHTML = `
@@ -474,10 +480,12 @@ async function procesarPago() {
             <path d="M21 12a9 9 0 0 0-9-9 9.58 9.58 0 0 0-6 2l3 3"/>
             <path d="M3 12a9 9 0 0 0 9 9 9.58 9.58 0 0 0 6-2l-3-3"/>
         </svg>
-        Procesando...
+        Procesando pago...
     `;
     
     try {
+        console.log('🔄 Iniciando proceso de pago...');
+        
         // Obtener usuario actual si está disponible
         const currentUser = '<?php echo isset($_SESSION['usuario']) ? htmlspecialchars($_SESSION['usuario']) : ''; ?>';
         
@@ -490,11 +498,13 @@ async function procesarPago() {
             throw new Error('El carrito está vacío');
         }
         
+        if (!currentUser) {
+            throw new Error('Usuario no identificado. Debe iniciar sesión.');
+        }
+        
         const formData = new FormData();
         formData.append('accion', 'procesar_pago');
-        if (currentUser) {
-            formData.append('idUsuario', currentUser);
-        }
+        formData.append('idUsuario', currentUser);
         
         // Log de datos que se envían
         console.log('📤 Enviando datos:');
@@ -504,53 +514,65 @@ async function procesarPago() {
         
         const response = await fetch('../backend/CRUD/CARRITO/carritoFactura.php', {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         });
         
         console.log('📡 Status de respuesta:', response.status);
-        console.log('📡 Headers de respuesta:', response.headers);
         
         const data = await procesarRespuestaJSON(response);
+        console.log('📄 Datos recibidos:', data);
         
         if (data.success) {
-            // Cerrar modal
+            console.log('✅ Pago procesado exitosamente');
+            
+            // Cerrar modal inmediatamente
             cerrarModal();
             
-            // Mostrar mensaje de éxito
-            notifications.show(data.mensaje || 'Pago exitoso, pedido realizado', 'success', 8000);
+            // Mostrar mensaje de éxito con detalles
+            const mensaje = `¡Pago procesado exitosamente!<br>
+                           <small>Factura: ${data.datos?.idFactura || 'N/A'}<br>
+                           Total: $${data.datos?.total?.toFixed(2) || '0.00'}</small>`;
             
-            // Recargar carrito (debería estar vacío ahora)
+            notifications.show(mensaje, 'success', 10000);
+            
+            // Actualizar carrito inmediatamente
+            carritoData = [];
+            mostrarCarrito();
+            
+            // Recargar desde servidor para confirmar
             setTimeout(() => {
                 cargarCarrito();
-            }, 2000);
+            }, 1000);
             
-            // Opcional: redirigir después de un tiempo
-            setTimeout(() => {
-                if (data.redirect) {
+            // Redirección opcional después de mostrar el mensaje
+            if (data.redirect) {
+                setTimeout(() => {
+                    console.log('🔄 Redirigiendo a:', data.redirect);
                     window.location.href = data.redirect;
-                }
-            }, 4000);
+                }, 6000);
+            }
             
         } else {
-            notifications.show(data.mensaje || 'Error al procesar el pago', 'error');
+            console.error('❌ Error en el pago:', data.mensaje);
+            notifications.show(data.mensaje || 'Error al procesar el pago', 'error', 8000);
             
             // Mostrar información de debug si está disponible
             if (data.debug) {
                 console.log('🐛 Debug info:', data.debug);
-                
-                if (!data.debug.session_usuario) {
-                    notifications.show('Es necesario iniciar sesión para realizar el pago', 'error');
-                }
             }
         }
         
     } catch (error) {
-        console.error('Error al procesar pago:', error);
-        notifications.show('Error de conexión al procesar el pago', 'error');
+        console.error('💥 Error al procesar pago:', error);
+        notifications.show(`Error: ${error.message}`, 'error', 6000);
     } finally {
-        // Restaurar botón
+        // Restaurar botón siempre
         btnPagar.disabled = false;
         btnPagar.innerHTML = originalText;
+        console.log('🔄 Botón de pago restaurado');
     }
 }
     </script>
