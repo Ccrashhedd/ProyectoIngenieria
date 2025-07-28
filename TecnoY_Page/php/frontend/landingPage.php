@@ -15,30 +15,124 @@ session_start();
     <link rel="stylesheet" href="../../css/priceSlider.css">
     <link rel="stylesheet" href="../../css/headerDinamico.css">
     
-    <!-- Estilos adicionales para modal Bootstrap -->
+    <!-- Estilos adicionales para modal personalizado -->
     <style>
-        .modal-content.bg-dark {
-            background: rgba(26, 26, 26, 0.98) !important;
+        /* Overlay del modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        /* Container del modal */
+        .modal-container {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
             border: 2px solid var(--primary-color, #0066ff);
             border-radius: 18px;
             box-shadow: 0 16px 64px rgba(0,212,255,0.3);
+            max-width: 900px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideIn 0.3s ease;
         }
         
-        .modal-header.border-primary {
-            border-bottom: 2px solid var(--primary-color, #0066ff) !important;
+        /* Header del modal */
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            border-bottom: 2px solid var(--primary-color, #0066ff);
         }
         
-        .modal-footer.border-primary {
-            border-top: 2px solid var(--primary-color, #0066ff) !important;
+        .modal-header h2 {
+            color: var(--primary-color, #0066ff);
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .modal-close-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-close-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(90deg);
+        }
+        
+        /* Body del modal */
+        .modal-body {
+            padding: 30px;
+        }
+        
+        .modal-content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 30px;
+            align-items: start;
+        }
+        
+        /* Sección de imagen */
+        .modal-image-section {
+            text-align: center;
         }
         
         .modal-producto-img {
-            max-width: 200px;
-            height: 200px;
+            max-width: 100%;
+            height: 250px;
             object-fit: cover;
             border-radius: 12px;
             border: 3px solid var(--primary-color, #0066ff);
             box-shadow: 0 8px 24px rgba(0,212,255,0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-producto-img:hover {
+            transform: scale(1.05);
+        }
+        
+        /* Sección de información */
+        .modal-info-section {
+            color: #fff;
         }
         
         .modal-producto-nombre {
@@ -46,14 +140,242 @@ session_start();
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            font-weight: bold;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
         }
         
-        .btn-close-white {
-            filter: brightness(0) invert(1);
+        .modal-info-item {
+            margin-bottom: 15px;
         }
         
-        .modal-backdrop {
-            backdrop-filter: blur(5px);
+        .modal-label {
+            font-weight: bold;
+            color: var(--secondary-color, #00d4ff);
+            display: inline-block;
+            min-width: 90px;
+        }
+        
+        .modal-value {
+            color: #fff;
+        }
+        
+        .modal-descripcion {
+            color: #ccc;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+        
+        .modal-precio {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #28a745;
+            margin: 20px 0;
+        }
+        
+        .modal-stock {
+            margin: 20px 0;
+        }
+        
+        /* Alertas de stock personalizadas */
+        .stock-alert {
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .stock-alert.success {
+            background: rgba(40, 167, 69, 0.2);
+            border: 1px solid #28a745;
+            color: #28a745;
+        }
+        
+        .stock-alert.warning {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid #ffc107;
+            color: #ffc107;
+        }
+        
+        .stock-alert.danger {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+            color: #dc3545;
+        }
+        
+        /* Footer del modal */
+        .modal-footer {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 20px 30px;
+            border-top: 2px solid var(--primary-color, #0066ff);
+        }
+        
+        /* Botones del modal */
+        .btn-agregar-carrito {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-agregar-carrito:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+        
+        .btn-agregar-carrito:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: #6c757d;
+        }
+        
+        .btn-cerrar {
+            background: transparent;
+            color: #dc3545;
+            border: 2px solid #dc3545;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-cerrar:hover {
+            background: #dc3545;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .modal-container {
+                width: 95%;
+                margin: 20px;
+            }
+            
+            .modal-content-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .modal-header,
+            .modal-body,
+            .modal-footer {
+                padding: 20px;
+            }
+            
+            .modal-footer {
+                flex-direction: column;
+            }
+            
+            .btn-agregar-carrito,
+            .btn-cerrar {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        
+        /* Spinner para botón de carga */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Sistema de notificaciones */
+        .notifications-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+        
+        .notification {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .notification.notification-show {
+            transform: translateX(0);
+        }
+        
+        .notification-success {
+            border-color: #28a745;
+            background: rgba(40, 167, 69, 0.2);
+        }
+        
+        .notification-error {
+            border-color: #dc3545;
+            background: rgba(220, 53, 69, 0.2);
+        }
+        
+        .notification-info {
+            border-color: #17a2b8;
+            background: rgba(23, 162, 184, 0.2);
+        }
+        
+        .notification-icon {
+            font-weight: bold;
+            min-width: 50px;
+        }
+        
+        .notification-message {
+            flex: 1;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s ease;
+        }
+        
+        .notification-close:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
     </style>
 </head>
@@ -121,35 +443,60 @@ session_start();
         </div>
     </footer>
     
-    <!-- Modal de producto (Bootstrap) -->
-    <div class="modal fade" id="modalProducto" tabindex="-1" aria-labelledby="modalProductoLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content bg-dark text-light border-primary">
-                <div class="modal-header border-primary">
-                    <h5 class="modal-title" id="modalProductoLabel">Detalles del Producto</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6 text-center">
-                            <img id="modal-img" src="" alt="" class="img-fluid rounded border border-primary modal-producto-img">
+    <!-- Modal de producto (Personalizado sin Bootstrap) -->
+    <div id="modalProducto" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="modalProductoLabel">Detalles del Producto</h2>
+                <!-- Botón clásico (X) para cerrar el modal -->
+                <button type="button" class="modal-close-btn" onclick="cerrarModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-content-grid">
+                    <!-- Imagen del producto -->
+                    <div class="modal-image-section">
+                        <img id="modal-img" src="" alt="" class="modal-producto-img">
+                    </div>
+                    <!-- Información del producto -->
+                    <div class="modal-info-section">
+                        <!-- Nombre del producto -->
+                        <h3 id="modal-nombre" class="modal-producto-nombre"></h3>
+                        
+                        <!-- Marca del producto -->
+                        <div class="modal-info-item">
+                            <span class="modal-label">Marca: </span>
+                            <span id="modal-marca" class="modal-value"></span>
                         </div>
-                        <div class="col-md-6">
-                            <h3 id="modal-nombre" class="modal-producto-nombre text-primary mb-3"></h3>
-                            <p id="modal-descripcion" class="modal-producto-descripcion text-secondary mb-3"></p>
-                            <div id="modal-precio" class="modal-producto-precio text-success fs-2 fw-bold mb-3"></div>
-                            <div id="modal-stock" class="modal-producto-stock mb-3"></div>
+                        
+                        <!-- Categoría del producto -->
+                        <div class="modal-info-item">
+                            <span class="modal-label">Categoría: </span>
+                            <span id="modal-categoria" class="modal-value"></span>
                         </div>
+                        
+                        <!-- Descripción del producto -->
+                        <div class="modal-info-item">
+                            <span class="modal-label">Descripción:</span>
+                            <p id="modal-descripcion" class="modal-descripcion"></p>
+                        </div>
+                        
+                        <!-- Precio del producto -->
+                        <div id="modal-precio" class="modal-precio"></div>
+                        
+                        <!-- Stock disponible -->
+                        <div id="modal-stock" class="modal-stock"></div>
                     </div>
                 </div>
-                <div class="modal-footer border-primary justify-content-center">
-                    <button id="btn-agregar-carrito" class="btn btn-success btn-lg me-2" onclick="agregarAlCarrito()">
-                        <i class="fas fa-shopping-cart me-2"></i>Agregar al Carrito
-                    </button>
-                    <button type="button" class="btn btn-outline-danger btn-lg" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>Cancelar
-                    </button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <!-- Botón para agregar al carrito -->
+                <button id="btn-agregar-carrito" class="btn-agregar-carrito" onclick="agregarAlCarrito()">
+                    <i class="fas fa-shopping-cart"></i> Agregar al Carrito
+                </button>
+                <!-- Botón para cerrar el modal -->
+                <button type="button" class="btn-cerrar" onclick="cerrarModal()">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
             </div>
         </div>
     </div>
@@ -169,14 +516,12 @@ const notifications = {
     show: function(message, type = 'info') {
         const container = document.getElementById('notificaciones');
         const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
+        notification.className = 'notification notification-' + type;
         
         const icon = type === 'success' ? 'OK' : type === 'error' ? 'ERROR' : 'INFO';
-        notification.innerHTML = `
-            <span class="notification-icon">${icon}</span>
-            <span class="notification-message">${message}</span>
-            <button class="notification-close" onclick="this.parentElement.remove()">×</button>
-        `;
+        notification.innerHTML = '<span class="notification-icon">' + icon + '</span>' +
+            '<span class="notification-message">' + message + '</span>' +
+            '<button class="notification-close" onclick="this.parentElement.remove()">×</button>';
         
         container.appendChild(notification);
         
@@ -226,7 +571,7 @@ function actualizarContadorCarrito() {
                 const carritoLink = document.querySelector('.carrito-link');
                 if (carritoLink) {
                     const totalItems = data.carrito.reduce((sum, item) => sum + parseInt(item.cantidad || 0), 0);
-                    carritoLink.innerHTML = `Carrito (${totalItems})`;
+                    carritoLink.innerHTML = 'Carrito (' + totalItems + ')';
                 }
             }
         })
@@ -239,9 +584,23 @@ function actualizarContadorCarrito() {
 // CARGA INICIAL DE DATOS
 // ============================================
 fetch('../backend/LoadProd.php')
-    .then(res => res.json())
+    .then(res => {
+        console.log('Respuesta del servidor recibida:', res.status);
+        if (!res.ok) {
+            throw new Error('HTTP error! status: ' + res.status);
+        }
+        return res.json();
+    })
     .then(data => {
+        console.log('Datos recibidos del backend:', data);
+        
+        if (data.error) {
+            throw new Error(data.mensaje || 'Error en el backend');
+        }
+        
         categoriasData = data;
+        console.log('Categorías cargadas:', categoriasData.length);
+        
         // Llenar el select de categorías
         const selectCat = document.getElementById('categoriaSelectLanding');
         data.forEach(cat => {
@@ -264,6 +623,9 @@ fetch('../backend/LoadProd.php')
             });
         });
         
+        console.log('Total de productos cargados:', productosData.length);
+        console.log('Primeros 3 productos:', productosData.slice(0, 3));
+        
         // Calcular rangos de precios
         calcularRangosPrecios();
         
@@ -272,10 +634,17 @@ fetch('../backend/LoadProd.php')
         
         renderProductos(); // Mostrar todos al inicio
         actualizarContadorCarrito(); // Inicializar contador del carrito
+        
+        // Mostrar notificación de éxito
+        notifications.show('Productos cargados correctamente (' + productosData.length + ' productos)', 'success');
     })
     .catch(error => {
         console.error('Error al cargar productos:', error);
-        notifications.show('Error al cargar productos', 'error');
+        notifications.show('Error al cargar productos: ' + error.message, 'error');
+        
+        // Mostrar información adicional de debug
+        console.error('URL intentada: ../backend/LoadProd.php');
+        console.error('Error detallado:', error);
     });
 
 // ============================================
@@ -401,7 +770,7 @@ function actualizarSliderPrecios(tipo, id = null) {
     filtroActual.precioMin = rango.min;
     filtroActual.precioMax = rango.max;
     
-    console.log(`Slider actualizado para ${tipo}:`, rango);
+    console.log('Slider actualizado para ' + tipo + ':', rango);
 }
 
 // ============================================
@@ -696,7 +1065,7 @@ function aplicarFiltroPorCategoria() {
         productos: productosFiltrados
     }];
     
-    console.log(`Mostrando ${productosFiltrados.length} productos de la categoría "${categoriaSeleccionada.nombre}"`);
+    console.log('Mostrando ' + productosFiltrados.length + ' productos de la categoría "' + categoriaSeleccionada.nombre + '"');
     renderProductosFiltrados(categoriaParaRender);
 }
 
@@ -723,7 +1092,7 @@ function aplicarFiltroPorMarca() {
         return precio >= filtroActual.precioMin && precio <= filtroActual.precioMax;
     });
     
-    console.log(`Mostrando ${productosFiltrados.length} productos de la marca seleccionada`);
+    console.log('Mostrando ' + productosFiltrados.length + ' productos de la marca seleccionada');
     renderProductos(productosFiltrados);
 }
 
@@ -749,7 +1118,7 @@ function aplicarFiltroGeneral() {
     });
     
     // Hacer consulta al backend
-    const url = `../backend/CONSULTA/buscarProductos.php?${params.toString()}`;
+    const url = '../backend/CONSULTA/buscarProductos.php?' + params.toString();
     console.log('URL de consulta:', url);
     
     fetch(url)
@@ -775,19 +1144,23 @@ function aplicarFiltroGeneral() {
 // FUNCIÓN PARA RENDERIZAR PRODUCTOS
 // ============================================
 function renderProductos(productos = null) {
+    console.log('🎨 INICIANDO renderProductos...');
     const cont = document.getElementById('categorias-con-productos');
     cont.innerHTML = '';
     
     // Si no se pasan productos específicos, usar todos
     const productosMostrar = productos || productosData;
+    
+    console.log('📊 Productos a mostrar:', {
+        longitud: productosMostrar.length,
+        primeros3: productosMostrar.slice(0, 3).map(p => ({ id: p.id, nombre: p.nombre }))
+    });
 
     if (productosMostrar.length === 0) {
-        cont.innerHTML = `
-            <div class="empty-state">
-                <h3>No se encontraron productos</h3>
-                <p>Intenta ajustar los filtros para encontrar lo que buscas</p>
-            </div>
-        `;
+        cont.innerHTML = '<div class="empty-state">' +
+            '<h3>No se encontraron productos</h3>' +
+            '<p>Intenta ajustar los filtros para encontrar lo que buscas</p>' +
+            '</div>';
         return;
     }
 
@@ -804,31 +1177,34 @@ function renderProductos(productos = null) {
         cats[prod.categoria_id].productos.push(prod);
     });
 
+    console.log('🏷️ Categorías agrupadas:', Object.keys(cats).length);
+
     Object.values(cats).forEach(cat => {
-        let catHtml = `
-        <section class="categoria-section">
-            <h3 class="categoria-titulo">
-                ${cat.imagen ? `<img src="../../${cat.imagen}" alt="${cat.nombre}" class="categoria-img">` : ''}
-                ${cat.nombre}
-                <span class="productos-count">(${cat.productos.length} productos)</span>
-            </h3>
-            <div class="productos-list-landing">
-        `;
+        console.log('🏗️ Generando HTML para categoría:', cat.nombre, 'con', cat.productos.length, 'productos');
+        
+        let catHtml = '<section class="categoria-section">' +
+            '<h3 class="categoria-titulo">' +
+            (cat.imagen ? '<img src="../../' + cat.imagen + '" alt="' + cat.nombre + '" class="categoria-img">' : '') +
+            cat.nombre +
+            '<span class="productos-count">(' + cat.productos.length + ' productos)</span>' +
+            '</h3>' +
+            '<div class="productos-list-landing">';
         
         cat.productos.forEach(prod => {
-            catHtml += `
-            <div class="producto-card-landing" onclick="mostrarDetalleProducto(${prod.id})">
-                ${prod.imagen ? `<img src="../../${prod.imagen}" alt="${prod.nombre}" class="producto-img-landing">` : ''}
-                <div class="producto-info-landing">
-                    <strong>${prod.nombre}</strong>
-                    <div class="producto-precio">$${parseFloat(prod.precio).toFixed(2)}</div>
-                </div>
-            </div>
-            `;
+            console.log('🛍️ Generando tarjeta para producto ID:', prod.id, 'Nombre:', prod.nombre);
+            catHtml += '<div class="producto-card-landing producto" data-id="' + prod.id + '" style="cursor: pointer;" title="Haz clic para ver detalles">' +
+                (prod.imagen ? '<img src="../../' + prod.imagen + '" alt="' + prod.nombre + '" class="producto-img-landing">' : '') +
+                '<div class="producto-info-landing">' +
+                '<strong>' + prod.nombre + '</strong>' +
+                '<div class="producto-precio">$' + parseFloat(prod.precio).toFixed(2) + '</div>' +
+                '</div>' +
+                '</div>';
         });
-        catHtml += `</div></section>`;
+        catHtml += '</div></section>';
         cont.innerHTML += catHtml;
     });
+    
+    console.log('✅ renderProductos completado');
 }
 
 // ============================================
@@ -839,40 +1215,34 @@ function renderProductosFiltrados(categorias) {
     cont.innerHTML = '';
     
     if (!categorias || categorias.length === 0) {
-        cont.innerHTML = `
-            <div class="empty-state">
-                <h3>No se encontraron productos</h3>
-                <p>Intenta ajustar los filtros para encontrar lo que buscas</p>
-            </div>
-        `;
+        cont.innerHTML = '<div class="empty-state">' +
+            '<h3>No se encontraron productos</h3>' +
+            '<p>Intenta ajustar los filtros para encontrar lo que buscas</p>' +
+            '</div>';
         return;
     }
 
     categorias.forEach(cat => {
-        let catHtml = `
-        <section class="categoria-section">
-            <h3 class="categoria-titulo">
-                ${cat.imagen ? `<img src="../../${cat.imagen}" alt="${cat.nombre}" class="categoria-img">` : ''}
-                ${cat.nombre}
-                <span class="productos-count">(${cat.productos.length} productos)</span>
-            </h3>
-            <div class="productos-list-landing">
-        `;
+        let catHtml = '<section class="categoria-section">' +
+            '<h3 class="categoria-titulo">' +
+            (cat.imagen ? '<img src="../../' + cat.imagen + '" alt="' + cat.nombre + '" class="categoria-img">' : '') +
+            cat.nombre +
+            '<span class="productos-count">(' + cat.productos.length + ' productos)</span>' +
+            '</h3>' +
+            '<div class="productos-list-landing">';
         
         cat.productos.forEach(prod => {
-            catHtml += `
-            <div class="producto-card-landing" onclick="mostrarDetalleProducto(${prod.id})">
-                ${prod.imagen ? `<img src="../../${prod.imagen}" alt="${prod.nombre}" class="producto-img-landing">` : ''}
-                <div class="producto-info-landing">
-                    <strong>${prod.nombre}</strong>
-                    <div class="producto-marca">Marca: ${prod.marca}</div>
-                    <div class="producto-precio">$${parseFloat(prod.precio).toFixed(2)}</div>
-                    <div class="producto-stock">Stock: ${prod.stock}</div>
-                </div>
-            </div>
-            `;
+            catHtml += '<div class="producto-card-landing producto" data-id="' + prod.id + '" style="cursor: pointer;" title="Haz clic para ver detalles">' +
+                (prod.imagen ? '<img src="../../' + prod.imagen + '" alt="' + prod.nombre + '" class="producto-img-landing">' : '') +
+                '<div class="producto-info-landing">' +
+                '<strong>' + prod.nombre + '</strong>' +
+                '<div class="producto-marca">Marca: ' + prod.marca + '</div>' +
+                '<div class="producto-precio">$' + parseFloat(prod.precio).toFixed(2) + '</div>' +
+                '<div class="producto-stock">Stock: ' + prod.stock + '</div>' +
+                '</div>' +
+                '</div>';
         });
-        catHtml += `</div></section>`;
+        catHtml += '</div></section>';
         cont.innerHTML += catHtml;
     });
 }
@@ -881,71 +1251,172 @@ function renderProductosFiltrados(categorias) {
 // FUNCIÓN PARA MOSTRAR DETALLE DEL PRODUCTO
 // ============================================
 function mostrarDetalleProducto(prodId) {
-    console.log('Mostrando detalle del producto ID:', prodId);
+    console.log('🔍 INICIANDO mostrarDetalleProducto con ID:', prodId);
     
-    const prod = productosData.find(p => p.id == prodId);
-    if (!prod) {
-        console.error('Producto no encontrado:', prodId);
+    // 1. VERIFICAR DATOS CARGADOS - Siguiendo documentación
+    if (!productosData || productosData.length === 0) {
+        console.warn('⚠️ Los datos aún no están cargados. Esperando...');
+        notifications.show('Cargando información del producto, espera un momento...', 'info');
+        
+        // Intentar nuevamente después de un breve delay
+        setTimeout(() => {
+            if (productosData && productosData.length > 0) {
+                console.log('✅ Datos cargados, reintentando mostrar producto...');
+                mostrarDetalleProducto(prodId); // Recursión controlada
+            } else {
+                console.error('❌ Los datos no se han cargado después del timeout');
+                notifications.show('Error: No se pudo cargar la información del producto', 'error');
+            }
+        }, 1500);
+        
+        return; // Salir de la función actual
+    }
+    
+    // 2. BÚSQUEDA: Encontrar producto por ID en array de memoria - Siguiendo documentación
+    const producto = productosData.find(p => p.id == prodId);
+    
+    // 3. VALIDACIÓN: Verificar que el producto existe - Siguiendo documentación
+    if (!producto) {
+        console.error('❌ Producto no encontrado:', prodId);
+        console.log('🔍 Productos disponibles:', productosData.map(p => ({ id: p.id, nombre: p.nombre })));
+        
+        // Buscar en datos originales de categorías como fallback
+        console.log('🔄 Buscando en datos originales de categorías...');
+        let prodEncontrado = null;
+        
+        categoriasData.forEach(cat => {
+            cat.productos.forEach(prod => {
+                if (prod.id == prodId) {
+                    prodEncontrado = {
+                        ...prod,
+                        categoria_id: cat.id,
+                        categoria_nombre: cat.nombre,
+                        categoria_imagen: cat.imagen
+                    };
+                }
+            });
+        });
+        
+        if (prodEncontrado) {
+            console.log('✅ Producto encontrado en categoriasData:', prodEncontrado.nombre);
+            mostrarModalConProducto(prodEncontrado);
+            return;
+        }
+        
         notifications.show('Producto no encontrado', 'error');
         return;
     }
     
-    console.log('Producto encontrado:', prod.nombre);
+    console.log('✅ Producto encontrado:', producto.nombre);
+    console.log('📦 Datos del producto:', producto);
     
-    // Llenar datos del modal
-    document.getElementById('modal-img').src = `../../${prod.imagen}`;
-    document.getElementById('modal-nombre').textContent = prod.nombre;
-    document.getElementById('modal-descripcion').textContent = prod.descripcion;
-    document.getElementById('modal-precio').textContent = `$${parseFloat(prod.precio).toFixed(2)}`;
+    // 4. LLAMAR A FUNCIÓN AUXILIAR PARA MOSTRAR EL MODAL
+    mostrarModalConProducto(producto);
+}
+
+// ============================================
+// FUNCIÓN AUXILIAR PARA MOSTRAR MODAL CON DATOS - Siguiendo documentación
+// ============================================
+function mostrarModalConProducto(producto) {
+    console.log('🎯 Mostrando modal para:', producto.nombre);
     
-    // Mostrar stock con estilo Bootstrap
+    // 3. POBLACIÓN: Llenar elementos del modal con datos del producto - Siguiendo documentación
+    document.getElementById('modal-img').src = '../../' + producto.imagen;
+    document.getElementById('modal-img').alt = producto.nombre;
+    document.getElementById('modal-nombre').textContent = producto.nombre;
+    document.getElementById('modal-descripcion').textContent = producto.descripcion || producto.modelo || 'Sin descripción disponible';
+    document.getElementById('modal-precio').textContent = '$' + parseFloat(producto.precio).toFixed(2);
+    
+    // Mostrar marca del producto
+    const marcaElement = document.getElementById('modal-marca');
+    if (producto.marca_nombre) {
+        marcaElement.textContent = producto.marca_nombre;
+    } else if (producto.marca) {
+        marcaElement.textContent = producto.marca;
+    } else {
+        // Si no tiene marca_nombre, buscarla en marcasData
+        const marca = marcasData.find(m => m.id == producto.marca_id);
+        marcaElement.textContent = marca ? marca.nombre : 'Marca no especificada';
+    }
+    
+    // Mostrar categoría del producto
+    const categoriaElement = document.getElementById('modal-categoria');
+    categoriaElement.textContent = producto.categoria_nombre || 'Categoría no especificada';
+    
+    // 4. LÓGICA CONDICIONAL: Manejo de stock - Siguiendo documentación
     const stockElement = document.getElementById('modal-stock');
-    const stock = parseInt(prod.stock);
     const btnAgregar = document.getElementById('btn-agregar-carrito');
+    const stock = parseInt(producto.stock);
     
-    if (stock > 0) {
-        stockElement.innerHTML = `<div class="alert alert-success d-inline-block"><i class="fas fa-box me-2"></i>En stock: ${stock} unidades</div>`;
+    if (stock > 10) {
+        stockElement.innerHTML = '<div class="stock-alert success">' +
+            '<i class="fas fa-box"></i>' +
+            '<strong>En stock:</strong> ' + stock + ' unidades disponibles' +
+            '</div>';
         btnAgregar.disabled = false;
         btnAgregar.classList.remove('disabled');
+        btnAgregar.textContent = '🛒 Agregar al Carrito';
+    } else if (stock > 0) {
+        stockElement.innerHTML = '<div class="stock-alert warning">' +
+            '<i class="fas fa-exclamation-triangle"></i>' +
+            '<strong>Stock limitado:</strong> Solo ' + stock + ' unidades disponibles' +
+            '</div>';
+        btnAgregar.disabled = false;
+        btnAgregar.classList.remove('disabled');
+        btnAgregar.textContent = '🛒 Agregar al Carrito';
     } else {
-        stockElement.innerHTML = `<div class="alert alert-danger d-inline-block"><i class="fas fa-exclamation-triangle me-2"></i>Sin stock disponible</div>`;
+        stockElement.innerHTML = '<div class="stock-alert danger">' +
+            '<i class="fas fa-times-circle"></i>' +
+            '<strong>Sin stock disponible</strong>' +
+            '</div>';
         btnAgregar.disabled = true;
         btnAgregar.classList.add('disabled');
+        btnAgregar.textContent = '❌ Agotado';
     }
     
-    // Guardar ID del producto actual para el carrito
-    window.currentProductId = prodId;
+    // 5. PERSISTENCIA: Guardar ID para otras funciones - Siguiendo documentación
+    window.currentProductId = producto.id;
     
-    // Mostrar modal usando Bootstrap - método más compatible
-    try {
-        // Método 1: Usar jQuery si está disponible
-        if (typeof $ !== 'undefined') {
-            $('#modalProducto').modal('show');
-            console.log('Modal abierto con jQuery');
-        } 
-        // Método 2: Usar Bootstrap vanilla JS
-        else if (typeof bootstrap !== 'undefined') {
-            const modal = new bootstrap.Modal(document.getElementById('modalProducto'));
-            modal.show();
-            console.log('Modal abierto con Bootstrap JS');
-        }
-        // Método 3: Fallback manual
-        else {
-            document.getElementById('modalProducto').style.display = 'block';
-            document.body.classList.add('modal-open');
-            console.log('Modal abierto manualmente');
-        }
-    } catch (error) {
-        console.error('Error al abrir modal:', error);
-        // Fallback final
-        document.getElementById('modalProducto').style.display = 'block';
-    }
+    // 6. VISUALIZACIÓN: Mostrar el modal - Siguiendo documentación
+    abrirModal();
 }
 
 // ============================================
 // FUNCIÓN PARA AGREGAR AL CARRITO
 // ============================================
 function agregarAlCarrito() {
+    /* 
+    ==========================================
+    FUNCIONALIDAD DEL CARRITO DE COMPRAS
+    ==========================================
+    
+    Esta función maneja la adición de productos al carrito de compras.
+    Actualmente implementa:
+    
+    1. VALIDACIONES BÁSICAS:
+       - Verificar que el producto existe
+       - Verificar stock disponible
+       - Validar cantidad a agregar
+    
+    2. COMUNICACIÓN CON BACKEND:
+       - Enviar datos del producto al servidor
+       - Manejar respuestas de éxito/error
+       - Actualizar estado del carrito
+    
+    3. FUNCIONALIDADES ADICIONALES A IMPLEMENTAR:
+       - Selector de cantidad en el modal
+       - Validación de usuario logueado
+       - Descuentos y promociones
+       - Cálculo de envío
+       - Gestión de wishlist/favoritos
+       - Comparación de productos
+       - Notificaciones push al usuario
+       - Integración con sistema de pagos
+       - Historial de compras del usuario
+    
+    ==========================================
+    */
+    
     // Obtener el producto actual
     const prod = productosData.find(p => p.id == window.currentProductId);
     if (!prod) {
@@ -953,24 +1424,40 @@ function agregarAlCarrito() {
         return;
     }
     
-    // Verificar stock
+    // Verificar stock disponible
     if (prod.stock <= 0) {
         notifications.show('Producto sin stock disponible', 'error');
         return;
     }
     
-    // Preparar datos para enviar
+    /* 
+    TODO: Implementar selector de cantidad
+    - Agregar input numérico en el modal
+    - Validar cantidad máxima según stock
+    - Permitir modificar cantidad antes de agregar
+    */
+    
+    // Preparar datos para enviar al backend
     const formData = new FormData();
     formData.append('accion', 'agregar');
     formData.append('producto_id', prod.id);
-    formData.append('cantidad', 1);
+    formData.append('cantidad', 1); // TODO: Obtener del selector de cantidad
     
-    // Mostrar indicador de carga
+    /* 
+    TODO: Validaciones adicionales antes del envío
+    - Verificar si el usuario está logueado
+    - Aplicar descuentos disponibles
+    - Calcular subtotales
+    - Verificar límites de compra por usuario
+    */
+    
+    // Mostrar indicador de carga en el botón
     const btnAgregar = document.getElementById('btn-agregar-carrito');
     const textoOriginal = btnAgregar.innerHTML;
-    btnAgregar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Agregando...';
+    btnAgregar.innerHTML = '<span class="spinner"></span> Agregando...';
     btnAgregar.disabled = true;
     
+    // Realizar petición al backend
     fetch('../backend/carrito_simple.php', {
         method: 'POST',
         body: formData
@@ -978,73 +1465,216 @@ function agregarAlCarrito() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            notifications.show(`${prod.nombre} agregado al carrito`, 'success');
+            // Mostrar notificación de éxito
+            notifications.show(prod.nombre + ' agregado al carrito', 'success');
+            
+            // Actualizar contador del carrito en el header
             actualizarContadorCarrito();
             
-            // Cerrar modal usando el método más compatible
-            try {
-                // Método 1: Usar jQuery si está disponible
-                if (typeof $ !== 'undefined') {
-                    $('#modalProducto').modal('hide');
-                    console.log('Modal cerrado con jQuery');
-                } 
-                // Método 2: Usar Bootstrap vanilla JS
-                else if (typeof bootstrap !== 'undefined') {
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalProducto'));
-                    if (modal) {
-                        modal.hide();
-                    }
-                    console.log('Modal cerrado con Bootstrap JS');
-                }
-                // Método 3: Fallback manual
-                else {
-                    document.getElementById('modalProducto').style.display = 'none';
-                    document.body.classList.remove('modal-open');
-                    console.log('Modal cerrado manualmente');
-                }
-            } catch (error) {
-                console.error('Error al cerrar modal:', error);
-                // Fallback final
-                document.getElementById('modalProducto').style.display = 'none';
-            }
+            /* 
+            TODO: Funcionalidades adicionales al agregar exitosamente
+            - Mostrar productos recomendados/relacionados
+            - Sugerir productos complementarios
+            - Ofrecer opciones de compra rápida
+            - Actualizar wishlist si el producto estaba ahí
+            - Enviar analytics del evento
+            - Mostrar preview del carrito
+            */
             
-            // Actualizar stock en memoria para reflejar el cambio
+            // Cerrar modal usando el método más compatible
+            cerrarModal();
+            
+            // Actualizar stock en memoria para reflejar el cambio inmediato
             prod.stock -= 1;
+            
+            /* 
+            TODO: Actualizar UI adicional
+            - Refrescar vista de productos si es necesario
+            - Actualizar indicador de stock en tarjetas de productos
+            - Mostrar badge "En el carrito" en el producto
+            */
+            
         } else {
             notifications.show(data.message || 'Error al agregar al carrito', 'error');
+            
+            /* 
+            TODO: Manejo avanzado de errores
+            - Mostrar sugerencias según el tipo de error
+            - Reautenticar usuario si la sesión expiró
+            - Refrescar stock si cambió
+            - Ofrecer alternativas (wishlist, notificar cuando haya stock)
+            */
         }
     })
     .catch(error => {
         console.error('Error:', error);
         notifications.show('Error de conexión al agregar al carrito', 'error');
+        
+        /* 
+        TODO: Manejo de errores de red
+        - Implementar retry automático
+        - Guardar en localStorage para retry posterior
+        - Mostrar modo offline si aplica
+        */
     })
     .finally(() => {
-        // Restaurar botón
+        // Restaurar estado original del botón
         btnAgregar.innerHTML = textoOriginal;
         btnAgregar.disabled = false;
     });
 }
 
 // ============================================
-// INICIALIZACIÓN
+// FUNCIONES PARA MODAL PERSONALIZADO - Siguiendo documentación
 // ============================================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Landing page cargada correctamente');
-    
-    // Verificar librerías disponibles
-    console.log('Verificando librerias disponibles:');
-    console.log('- jQuery:', typeof $ !== 'undefined' ? 'Disponible' : 'No disponible');
-    console.log('- Bootstrap:', typeof bootstrap !== 'undefined' ? 'Disponible' : 'No disponible');
-    
-    // Verificar elementos del modal
+function abrirModal() {
     const modal = document.getElementById('modalProducto');
     if (modal) {
-        console.log('Modal HTML encontrado');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // Prevenir scroll del body
+        console.log('✅ Modal personalizado abierto');
     } else {
-        console.error('Modal HTML no encontrado');
+        console.error('❌ Modal no encontrado');
+    }
+}
+
+// Función principal de cierre - Siguiendo documentación
+function cerrarModal() {
+    const modal = document.getElementById('modalProducto');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto'; // Restaurar scroll del body
+        // Opcional: limpiar datos globales - Siguiendo documentación
+        window.currentProductId = null;
+        console.log('✅ Modal personalizado cerrado');
+    }
+}
+
+// Cierre al hacer clic fuera del contenido - Siguiendo documentación
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('modalProducto');
+    // Solo cerrar si se hace clic en el fondo del modal, no en el contenido
+    if (event.target === modal) {
+        cerrarModal();
+    }
+});
+
+// Cierre con tecla ESC - Siguiendo documentación
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const modal = document.getElementById('modalProducto');
+        // Solo cerrar si el modal está visible
+        if (modal && modal.style.display === 'flex') {
+            cerrarModal();
+        }
+    }
+});
+
+// ============================================
+// INICIALIZACIÓN Y EVENTOS MEJORADOS - Siguiendo documentación
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📋 Sistema de modales inicializado - Siguiendo documentación');
+    
+    // Verificar elementos del modal personalizado
+    const modal = document.getElementById('modalProducto');
+    if (modal) {
+        console.log('✅ Modal personalizado HTML encontrado');
+        
+        // Verificar elementos internos del modal
+        const elementos = [
+            'modal-img', 'modal-nombre', 'modal-marca', 'modal-categoria',
+            'modal-descripcion', 'modal-precio', 'modal-stock', 'btn-agregar-carrito'
+        ];
+        
+        elementos.forEach(id => {
+            const elemento = document.getElementById(id);
+            if (elemento) {
+                console.log('✓ Elemento ' + id + ' encontrado');
+            } else {
+                console.error('✗ Elemento ' + id + ' NO encontrado');
+            }
+        });
+        
+    } else {
+        console.error('❌ Modal personalizado HTML no encontrado');
     }
     
-    console.log('Bootstrap modales listos para usar');
+    // Manejar clics en productos dinámicamente - Siguiendo documentación
+    document.addEventListener('click', function(event) {
+        // Solo procesar clics en elementos con la clase 'producto'
+        if (event.target.closest('.producto')) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const producto = event.target.closest('.producto');
+            const idProducto = producto.getAttribute('data-id');
+            
+            console.log('🎯 Clic detectado en producto:', idProducto);
+            
+            if (idProducto) {
+                // Guardar ID del producto actual - Siguiendo documentación
+                window.currentProductId = idProducto;
+                mostrarDetalleProducto(idProducto);
+            } else {
+                console.error('❌ No se encontró ID del producto');
+            }
+        }
+    });
+    
+    // Configurar botón de cierre del modal - Siguiendo documentación
+    const botonCerrar = document.querySelector('#modalProducto .close');
+    if (botonCerrar) {
+        botonCerrar.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            cerrarModal();
+        });
+    }
+    
+    console.log('✅ Eventos del modal configurados correctamente');
+    
+    // Función de prueba mejorada para el modal - Siguiendo documentación
+    window.probarModal = function() {
+        console.log('🧪 Ejecutando prueba del modal...');
+        
+        // Verificar si los productos están cargados
+        if (!productosData || productosData.length === 0) {
+            console.error('❌ No hay productos cargados aún. Intentando recargar...');
+            
+            // Mostrar notificación de que se están cargando los productos
+            notifications.show('Cargando productos, espera un momento...', 'info');
+            
+            // Intentar recargar después de un segundo
+            setTimeout(() => {
+                if (productosData && productosData.length > 0) {
+                    console.log('✅ Productos disponibles:', productosData.length);
+                    const primerProducto = productosData[0];
+                    console.log('🎯 Usando producto para prueba:', primerProducto);
+                    window.currentProductId = primerProducto.id; // Guardar ID - Siguiendo documentación
+                    mostrarDetalleProducto(primerProducto.id);
+                } else {
+                    notifications.show('Error: No se pudieron cargar los productos', 'error');
+                    console.error('❌ Los productos no se han cargado correctamente');
+                }
+            }, 1000);
+            
+            return;
+        }
+        
+        // Usar el primer producto disponible
+        const primerProducto = productosData[0];
+        console.log('🎯 Mostrando modal para el producto:', primerProducto.nombre);
+        console.log('📊 Datos del producto:', primerProducto);
+        
+        // Guardar ID del producto actual - Siguiendo documentación
+        window.currentProductId = primerProducto.id;
+        
+        // Llamar a la función del modal
+        mostrarDetalleProducto(primerProducto.id);
+    };
+    
+    console.log('✅ Función de prueba disponible: probarModal()');
 });
     </script>
 
