@@ -191,6 +191,63 @@ function renderTodasCategorias(categorias) {
     
     productosCards.innerHTML = htmlContent || '<p class="empty-state">No hay productos disponibles en ninguna categoría.</p>';
 }
+
+// Función para actualizar el select de categorías
+function actualizarSelectCategorias() {
+    fetch('../backend/SELECTS/obtenerCategorias.php')
+        .then(response => response.json())
+        .then(categorias => {
+            const select = document.getElementById('categoriaSelect');
+            const valorActual = select.value;
+            
+            // Limpiar opciones existentes excepto las fijas
+            select.innerHTML = `
+                <option value="" disabled selected>Seleccione una categoría</option>
+                <option value="todas" data-img="">Todas las categorías</option>
+            `;
+            
+            // Agregar nuevas categorías
+            categorias.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.setAttribute('data-img', '../../' + cat.imagen);
+                option.textContent = cat.nombre;
+                select.appendChild(option);
+            });
+            
+            // Restaurar valor si aún existe
+            if (valorActual && [...select.options].some(opt => opt.value === valorActual)) {
+                select.value = valorActual;
+            }
+        })
+        .catch(error => {
+            console.error('Error al actualizar categorías:', error);
+        });
+}
+
+// Exponer función globalmente para que otras páginas puedan usarla
+window.actualizarSelectCategorias = actualizarSelectCategorias;
+
+// Escuchar cambios en las categorías desde otras pestañas
+window.addEventListener('storage', function(e) {
+    if (e.key === 'categorias_updated') {
+        console.log('Detectado cambio en categorías, actualizando...');
+        actualizarSelectCategorias();
+    }
+});
+
+// También escuchar el evento focus para actualizar cuando se regrese a la pestaña
+window.addEventListener('focus', function() {
+    // Verificar si ha pasado tiempo desde la última actualización
+    const lastUpdate = localStorage.getItem('categorias_updated');
+    if (lastUpdate) {
+        const timeDiff = Date.now() - parseInt(lastUpdate);
+        // Si han pasado menos de 30 segundos, actualizar
+        if (timeDiff < 30000) {
+            actualizarSelectCategorias();
+        }
+    }
+});
 </script>
 
 <!-- Footer -->

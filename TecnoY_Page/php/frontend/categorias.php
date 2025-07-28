@@ -55,7 +55,7 @@ try {
         <a href="pag_adm.php" class="back-button">⟵ Volver</a>
     </div>
     <h2 class="page-title">Categorías</h2>
-    <form method="POST" enctype="multipart/form-data" class="form-categoria" id="form-categoria">
+    <form method="POST" enctype="multipart/form-data" class="form-categoria" id="form-categoria" action="../backend/CRUD/CATEGORIA/addCat.php">
         <div class="form-group">
             <label class="form-label">Nombre de la categoría:</label>
             <input type="text" name="nombre" class="form-input" required>
@@ -100,15 +100,11 @@ try {
                     <span class="category-name"><?= htmlspecialchars($cat['nombre']) ?></span>
                 </div>
                 <div class="category-actions">
-                    <a href="#" class="btn btn-warning btn-small" title="Editar"
-                        onclick="abrirModalEditarCategoria(
-                            <?= $cat['id'] ?>,
-                            '<?= htmlspecialchars(addslashes($cat['nombre'])) ?>',
-                            '<?= htmlspecialchars($cat['imagen']) ?>'
-                        ); return false;">&#9998;</a>
-                    <a href="#" class="btn btn-danger btn-small"
-                        onclick="mostrarModalEliminar(<?= $cat['id'] ?>, '<?= htmlspecialchars(addslashes($cat['nombre'])) ?>'); return false;"
-                        title="Eliminar">&#128465;</a>
+                    <button type="button" class="btn btn-warning btn-small" title="Editar"
+                        onclick="abrirModalEditarCategoria(<?= htmlspecialchars(json_encode($cat['id'])) ?>, <?= htmlspecialchars(json_encode($cat['nombre'])) ?>, <?= htmlspecialchars(json_encode($cat['imagen'])) ?>)">&#9998;</button>
+                    <button type="button" class="btn btn-danger btn-small"
+                        onclick="mostrarModalEliminar(<?= htmlspecialchars(json_encode($cat['id'])) ?>, <?= htmlspecialchars(json_encode($cat['nombre'])) ?>)"
+                        title="Eliminar">&#128465;</button>
                 </div>
             </li>
         <?php endforeach; ?>

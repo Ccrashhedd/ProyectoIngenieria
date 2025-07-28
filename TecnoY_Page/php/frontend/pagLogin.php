@@ -18,7 +18,7 @@
                 
                 <div class="admin-info">
                     <strong>🧪 Credenciales de prueba:</strong><br>
-                    <strong>Admin:</strong> <code>admin</code> / <code>admin123</code><br>
+                    <strong>Admin:</strong> <code>admin</code> / <code>Admin123</code><br>
                     <strong>Usuario:</strong> <code>user1</code> / <code>user123</code>
                 </div>
             </div>

@@ -137,6 +137,7 @@ if (isset($_GET['eliminar'])) {
     <link rel="stylesheet" href="../../css/headerDinamico.css">
     <link rel="stylesheet" href="../../css/headerAdmin.css">
     <link rel="stylesheet" href="../../css/adminComponents.css">
+    <link rel="stylesheet" href="../../css/modales.css">
 </head>
 <body>
 
@@ -162,7 +163,7 @@ if (isset($_GET['eliminar'])) {
     </div>
     <h2 class="page-title">Productos</h2>
 
-    <form method="POST" enctype="multipart/form-data" class="form-producto">
+    <form method="POST" enctype="multipart/form-data" class="form-producto" id="form-producto">
         <div class="form-group">
             <label class="form-label">Categoría:</label>
             <select name="categoria_id" class="form-input" required>
@@ -209,6 +210,23 @@ if (isset($_GET['eliminar'])) {
     </div>
 
     <h3 id="listado-productos" class="section-title">Listado de productos</h3>
+    
+    <?php if (isset($_GET['success'])): ?>
+        <div class="alert alert-success">Producto agregado exitosamente</div>
+    <?php endif; ?>
+    
+    <?php if (isset($_GET['deleted'])): ?>
+        <div class="alert alert-success">Producto eliminado exitosamente</div>
+    <?php endif; ?>
+    
+    <?php if (isset($_GET['error'])): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars($_GET['error']) ?></div>
+    <?php endif; ?>
+    
+    <?php if (isset($error_msg)): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars($error_msg) ?></div>
+    <?php endif; ?>
+    
     <ul class="productos-list" id="productosList">
         <?php foreach ($productos as $prod): ?>
             <li class="producto-card" data-categoria-id="<?= $prod['categoria_id'] ?>">
@@ -227,9 +245,11 @@ if (isset($_GET['eliminar'])) {
                     </span>
                 </div>
                 <div class="product-actions">
-                    <a href="#" class="btn btn-warning btn-small" title="Editar"
-                       onclick="abrirModalEditar(<?= $prod['id'] ?>); return false;">&#9998;</a>
-                    <a href="#" class="btn btn-danger btn-small" onclick="confirmarEliminar(<?= $prod['id'] ?>, '<?= htmlspecialchars(addslashes($prod['nombre'])) ?>'); return false;" title="Eliminar">&#128465;</a>
+                    <button type="button" class="btn btn-warning btn-small" title="Editar"
+                       onclick="abrirModalEditar(<?= htmlspecialchars(json_encode($prod['id'])) ?>)">&#9998;</button>
+                    <button type="button" class="btn btn-danger btn-small" 
+                       onclick="confirmarEliminar(<?= htmlspecialchars(json_encode($prod['id'])) ?>, <?= htmlspecialchars(json_encode($prod['nombre'])) ?>)" 
+                       title="Eliminar">&#128465;</button>
                 </div>
             </li>
         <?php endforeach; ?>
@@ -294,117 +314,6 @@ if (isset($_GET['eliminar'])) {
 </div>
 
 <script>
-// Estilos CSS para modales (añadir dinámicamente)
-const modalStyles = `
-<style>
-.custom-modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    align-items: center;
-    justify-content: center;
-}
-
-.custom-modal .modal-content {
-    background-color: white;
-    margin: auto;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    max-width: 500px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-    position: relative;
-}
-
-.close-modal {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-    position: absolute;
-    right: 10px;
-    top: 10px;
-}
-
-.close-modal:hover,
-.close-modal:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.custom-modal .form-group {
-    margin-bottom: 15px;
-}
-
-.custom-modal .form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-}
-
-.custom-modal .form-input, 
-.custom-modal .form-textarea {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-sizing: border-box;
-}
-
-.custom-modal .form-textarea {
-    height: 80px;
-    resize: vertical;
-}
-
-.custom-modal .form-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 20px;
-}
-
-.custom-modal .btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-}
-
-.custom-modal .btn-primary {
-    background-color: #007bff;
-    color: white;
-}
-
-.custom-modal .btn-danger {
-    background-color: #dc3545;
-    color: white;
-}
-
-.custom-modal .btn-cancelar {
-    background-color: #6c757d;
-    color: white;
-}
-
-.custom-modal .btn:hover {
-    opacity: 0.9;
-}
-</style>
-`;
-
-// Insertar estilos en el head
-document.head.insertAdjacentHTML('beforeend', modalStyles);
-
 function abrirModalEditar(id) {
     console.log('Abriendo modal para editar producto ID:', id);
     
@@ -487,6 +396,80 @@ function cerrarModalEliminar() {
 
 // Event listeners cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
+    // Formulario de agregar producto
+    const formProducto = document.getElementById('form-producto');
+    if (formProducto) {
+        formProducto.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            
+            // Mostrar indicador de carga
+            submitBtn.textContent = 'Agregando...';
+            submitBtn.disabled = true;
+            
+            fetch('../backend/CRUD/PRODUCTO/agregarProd.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Mostrar mensaje de éxito
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success';
+                    alertDiv.textContent = 'Producto agregado exitosamente';
+                    
+                    // Insertar la alerta antes del formulario
+                    formProducto.parentNode.insertBefore(alertDiv, formProducto);
+                    
+                    // Limpiar formulario
+                    formProducto.reset();
+                    
+                    // Eliminar alerta después de 5 segundos
+                    setTimeout(() => {
+                        if (alertDiv.parentNode) {
+                            alertDiv.parentNode.removeChild(alertDiv);
+                        }
+                    }, 5000);
+                    
+                    // Recargar lista de productos
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    // Mostrar mensaje de error
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger';
+                    alertDiv.textContent = 'Error al agregar el producto: ' + (data.mensaje || 'Error desconocido');
+                    
+                    formProducto.parentNode.insertBefore(alertDiv, formProducto);
+                    
+                    // Eliminar alerta después de 5 segundos
+                    setTimeout(() => {
+                        if (alertDiv.parentNode) {
+                            alertDiv.parentNode.removeChild(alertDiv);
+                        }
+                    }, 5000);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error de conexión: ' + error.message);
+            })
+            .finally(() => {
+                // Restaurar botón
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+    }
+
     // Botón confirmar eliminación
     const btnConfirmar = document.getElementById('btnConfirmarEliminar');
     if (btnConfirmar) {
@@ -517,10 +500,37 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 if(data.success){
-                    alert('Producto actualizado exitosamente');
-                    location.reload();
+                    // Mostrar mensaje de éxito
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success';
+                    alertDiv.textContent = 'Producto actualizado exitosamente';
+                    
+                    const container = document.querySelector('.productos-container');
+                    if (container) {
+                        container.insertBefore(alertDiv, container.firstChild);
+                    }
+                    
+                    cerrarModalEditar();
+                    
+                    // Recargar página después de 2 segundos
+                    setTimeout(() => location.reload(), 2000);
                 } else {
-                    alert('Error al editar el producto: ' + (data.mensaje || 'Error desconocido'));
+                    // Mostrar mensaje de error
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger';
+                    alertDiv.textContent = 'Error al editar el producto: ' + (data.mensaje || 'Error desconocido');
+                    
+                    const container = document.querySelector('.productos-container');
+                    if (container) {
+                        container.insertBefore(alertDiv, container.firstChild);
+                    }
+                    
+                    // Eliminar alerta después de 5 segundos
+                    setTimeout(() => {
+                        if (alertDiv.parentNode) {
+                            alertDiv.parentNode.removeChild(alertDiv);
+                        }
+                    }, 5000);
                 }
             })
             .catch(error => {
@@ -558,6 +568,95 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
+    }
+});
+
+// Función para actualizar los selects de categorías
+function actualizarSelectCategorias() {
+    fetch('../backend/SELECTS/obtenerCategorias.php')
+        .then(response => response.json())
+        .then(categorias => {
+            // Actualizar select del formulario de agregar
+            const selectForm = document.querySelector('select[name="categoria_id"]');
+            if (selectForm) {
+                const valorActual = selectForm.value;
+                selectForm.innerHTML = '<option value="" disabled selected>Seleccione una categoría</option>';
+                
+                categorias.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.id;
+                    option.textContent = cat.nombre;
+                    selectForm.appendChild(option);
+                });
+                
+                // Restaurar valor si aún existe
+                if (valorActual && [...selectForm.options].some(opt => opt.value === valorActual)) {
+                    selectForm.value = valorActual;
+                }
+            }
+            
+            // Actualizar select del filtro
+            const selectFiltro = document.getElementById('categoriaFiltro');
+            if (selectFiltro) {
+                const valorActual = selectFiltro.value;
+                selectFiltro.innerHTML = '<option value="" selected>Mostrar todas las categorías</option>';
+                
+                categorias.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.id;
+                    option.textContent = cat.nombre;
+                    selectFiltro.appendChild(option);
+                });
+                
+                // Restaurar valor si aún existe
+                if (valorActual && [...selectFiltro.options].some(opt => opt.value === valorActual)) {
+                    selectFiltro.value = valorActual;
+                }
+            }
+            
+            // Actualizar select del modal de edición
+            const selectEdit = document.getElementById('edit-categoria');
+            if (selectEdit) {
+                const valorActual = selectEdit.value;
+                selectEdit.innerHTML = '';
+                
+                categorias.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.id;
+                    option.textContent = cat.nombre;
+                    selectEdit.appendChild(option);
+                });
+                
+                // Restaurar valor si aún existe
+                if (valorActual && [...selectEdit.options].some(opt => opt.value === valorActual)) {
+                    selectEdit.value = valorActual;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error al actualizar categorías:', error);
+        });
+}
+
+// Exponer función globalmente
+window.actualizarSelectCategorias = actualizarSelectCategorias;
+
+// Escuchar cambios en las categorías desde otras pestañas
+window.addEventListener('storage', function(e) {
+    if (e.key === 'categorias_updated') {
+        console.log('Detectado cambio en categorías, actualizando...');
+        actualizarSelectCategorias();
+    }
+});
+
+// También escuchar el evento focus para actualizar cuando se regrese a la pestaña
+window.addEventListener('focus', function() {
+    const lastUpdate = localStorage.getItem('categorias_updated');
+    if (lastUpdate) {
+        const timeDiff = Date.now() - parseInt(lastUpdate);
+        if (timeDiff < 30000) {
+            actualizarSelectCategorias();
+        }
     }
 });
 </script>
