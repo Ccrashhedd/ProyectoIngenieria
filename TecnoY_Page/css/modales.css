@@ -1,0 +1,266 @@
+/* ========================================
+   ESTILOS GENERALES PARA MODALES CUSTOM
+======================================== */
+
+.custom-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-modal .modal-content {
+    background-color: white;
+    margin: auto;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.close-modal {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    transition: color 0.3s ease;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* ========================================
+   FORMULARIOS DENTRO DE MODALES
+======================================== */
+
+.custom-modal .form-group {
+    margin-bottom: 15px;
+}
+
+.custom-modal .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #333;
+}
+
+.custom-modal .form-input, 
+.custom-modal .form-textarea,
+.custom-modal .form-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.custom-modal .form-input:focus,
+.custom-modal .form-textarea:focus,
+.custom-modal .form-select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.custom-modal .form-textarea {
+    height: 80px;
+    resize: vertical;
+}
+
+.custom-modal .img-preview-modal {
+    max-width: 100px;
+    max-height: 100px;
+    margin-top: 8px;
+    display: block;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* ========================================
+   ACCIONES DE FORMULARIOS
+======================================== */
+
+.custom-modal .form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.custom-modal .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    min-width: 80px;
+    text-align: center;
+}
+
+.custom-modal .btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.custom-modal .btn:active {
+    transform: translateY(0);
+}
+
+/* Botones específicos */
+.custom-modal .btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.custom-modal .btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.custom-modal .btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.custom-modal .btn-danger:hover {
+    background-color: #c82333;
+}
+
+.custom-modal .btn-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.custom-modal .btn-warning:hover {
+    background-color: #e0a800;
+}
+
+.custom-modal .btn-cancelar {
+    background-color: #6c757d;
+    color: white;
+}
+
+.custom-modal .btn-cancelar:hover {
+    background-color: #5a6268;
+}
+
+/* ========================================
+   MODALES DE CONFIRMACIÓN
+======================================== */
+
+.custom-modal .modal-content.confirmation {
+    max-width: 400px;
+    text-align: center;
+}
+
+.custom-modal .confirmation-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.custom-modal .confirmation-icon.danger {
+    color: #dc3545;
+}
+
+.custom-modal .confirmation-icon.success {
+    color: #28a745;
+}
+
+.custom-modal .confirmation-icon.warning {
+    color: #ffc107;
+}
+
+.custom-modal .confirmation-message {
+    font-size: 16px;
+    margin-bottom: 20px;
+    color: #333;
+    line-height: 1.5;
+}
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 768px) {
+    .custom-modal .modal-content {
+        width: 95%;
+        margin: 10px;
+        max-height: 90vh;
+    }
+    
+    .custom-modal .form-actions {
+        flex-direction: column;
+    }
+    
+    .custom-modal .btn {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+}
+
+/* ========================================
+   UTILIDADES
+======================================== */
+
+.custom-modal .text-center {
+    text-align: center;
+}
+
+.custom-modal .text-danger {
+    color: #dc3545;
+}
+
+.custom-modal .text-success {
+    color: #28a745;
+}
+
+.custom-modal .text-warning {
+    color: #ffc107;
+}
+
+.custom-modal .mb-3 {
+    margin-bottom: 1rem;
+}
+
+.custom-modal .mt-3 {
+    margin-top: 1rem;
+}

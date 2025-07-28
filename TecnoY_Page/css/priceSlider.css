@@ -1,0 +1,233 @@
+/* ============================================
+   SLIDER DE PRECIO PERSONALIZADO
+   ============================================ */
+
+.price-slider-wrapper {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    margin-top: 10px;
+}
+
+.price-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    font-weight: bold;
+    font-size: 18px;
+    color: #333;
+}
+
+.price-min, .price-max {
+    background: #007bff;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.price-separator {
+    margin: 0 15px;
+    font-size: 20px;
+    color: #6c757d;
+    font-weight: bold;
+}
+
+.slider-container {
+    position: relative;
+    height: 20px;
+    margin: 20px 0;
+}
+
+.slider-track {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: #ddd;
+    border-radius: 3px;
+    transform: translateY(-50%);
+}
+
+.slider-range {
+    position: absolute;
+    top: 50%;
+    height: 6px;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    border-radius: 3px;
+    transform: translateY(-50%);
+    transition: all 0.3s ease;
+}
+
+.slider-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 20px;
+    background: transparent;
+    pointer-events: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.slider-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    background: #007bff;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    pointer-events: auto;
+    transition: all 0.3s ease;
+}
+
+.slider-input::-webkit-slider-thumb:hover {
+    background: #0056b3;
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.slider-input::-webkit-slider-thumb:active {
+    transform: scale(1.2);
+}
+
+.slider-input::-moz-range-thumb {
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    background: #007bff;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    pointer-events: auto;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.slider-input::-moz-range-thumb:hover {
+    background: #0056b3;
+    transform: scale(1.1);
+}
+
+.slider-input::-moz-range-track {
+    background: transparent;
+    border: none;
+}
+
+.price-inputs {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.price-input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.price-input-group label {
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.manual-price-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.manual-price-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.manual-price-input:invalid {
+    border-color: #ff6b6b;
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+/* Animaciones */
+.price-slider-wrapper {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .price-display {
+        font-size: 16px;
+    }
+    
+    .price-min, .price-max {
+        padding: 6px 12px;
+        font-size: 14px;
+    }
+    
+    .price-separator {
+        margin: 0 10px;
+        font-size: 18px;
+    }
+    
+    .price-inputs {
+        gap: 10px;
+    }
+    
+    .manual-price-input {
+        padding: 6px 8px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .price-slider-wrapper {
+        padding: 10px;
+    }
+    
+    .price-display {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .price-separator {
+        transform: rotate(90deg);
+        margin: 5px 0;
+    }
+    
+    .price-inputs {
+        flex-direction: column;
+        gap: 15px;
+    }
+}

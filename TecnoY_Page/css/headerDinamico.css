@@ -1,0 +1,222 @@
+/* ============================================
+   ESTILOS PARA HEADER DINÁMICO DE SESIÓN
+   ============================================ */
+
+.header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-bottom: 8px;
+}
+
+.usuario-nombre {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary, #ffffff);
+    margin-bottom: 4px;
+}
+
+.user-role {
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-role.admin {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: white;
+}
+
+.user-role.user {
+    background: linear-gradient(135deg, #4834d4, #686de0);
+    color: white;
+}
+
+.navbar-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.sesion-admin,
+.sesion-usuario,
+.sesion-invitado {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* Estilos base para botones */
+.nav-btn,
+.admin-btn,
+.user-btn,
+.login-btn,
+.logout-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    min-width: 120px;
+    text-align: center;
+}
+
+/* Botones de navegación */
+.nav-btn {
+    background: linear-gradient(135deg, var(--primary-color, #0066ff), var(--secondary-color, #00d4ff));
+    color: white;
+}
+
+.nav-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.4);
+}
+
+/* Botones de administrador */
+.admin-btn {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: white;
+}
+
+.admin-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+}
+
+/* Botones de usuario */
+.user-btn {
+    background: linear-gradient(135deg, #4834d4, #686de0);
+    color: white;
+}
+
+.user-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(72, 52, 212, 0.4);
+}
+
+/* Botón de inicio de sesión */
+.login-btn {
+    background: linear-gradient(135deg, #2ed573, #1dd1a1);
+    color: white;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 213, 115, 0.4);
+}
+
+/* Botón de cerrar sesión */
+.logout-btn {
+    background: linear-gradient(135deg, #ff4757, #c44569);
+    color: white;
+}
+
+.logout-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
+}
+
+/* Estados activos */
+.nav-btn:active,
+.admin-btn:active,
+.user-btn:active,
+.login-btn:active,
+.logout-btn:active {
+    transform: translateY(0);
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .header-right {
+        align-items: center;
+        width: 100%;
+    }
+    
+    .user-info {
+        align-items: center;
+        text-align: center;
+    }
+    
+    .navbar-controls,
+    .sesion-admin,
+    .sesion-usuario,
+    .sesion-invitado {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .nav-btn,
+    .admin-btn,
+    .user-btn,
+    .login-btn,
+    .logout-btn {
+        flex: 1;
+        min-width: auto;
+        font-size: 0.8rem;
+        padding: 6px 8px;
+    }
+    
+    .usuario-nombre {
+        font-size: 0.9rem;
+    }
+    
+    .user-role {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar-controls,
+    .sesion-admin,
+    .sesion-usuario {
+        flex-direction: column;
+    }
+    
+    .nav-btn,
+    .admin-btn,
+    .user-btn,
+    .login-btn,
+    .logout-btn {
+        width: 100%;
+        margin-bottom: 4px;
+    }
+}
+
+/* Animaciones de entrada */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.header-right > * {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+/* Efectos de hover mejorados */
+.nav-btn:hover,
+.admin-btn:hover,
+.user-btn:hover,
+.login-btn:hover,
+.logout-btn:hover {
+    filter: brightness(1.1);
+}
