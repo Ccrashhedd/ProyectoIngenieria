@@ -57,7 +57,13 @@
                 </button>
             </form>
 
-            <a href="landingPage.php" class="logout-link">← Volver al inicio</a>
+            <!-- Enlaces adicionales -->
+            <div class="login-links">
+                <a href="nuevoUsuario.php" class="register-link">
+                    ¿No tienes cuenta? Registrarse
+                </a>
+                <a href="landingPage.php" class="logout-link">← Volver al inicio</a>
+            </div>
         </div>
     </main>
 
