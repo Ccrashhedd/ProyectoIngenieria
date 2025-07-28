@@ -80,27 +80,33 @@ session_start();
         <!-- Filtros para busqueda de productos -->
         <div class="filtros-container">
             <div class="filtros-busqueda">
-                <label>Nombre:</label>
+                <label for="filtroNombre">Nombre:</label>
                 <input type="text" id="filtroNombre" class="form-input" placeholder="Buscar por nombre">
             </div>
 
-            <div class="categoria-select-container">
-                <h3>Filtrar por categoría</h3>
-                    <select id="categoriaSelectLanding" class="form-input">
-                        <option value="" selected>Mostrar todas las categorías</option>
-                    </select>
+            <div class="filtros-categoria">
+                <label for="categoriaSelectLanding">Filtrar por categoría:</label>
+                <select id="categoriaSelectLanding" class="form-input">
+                    <option value="" selected>Mostrar todas las categorías</option>
+                </select>
             </div>
 
-            <div class="filtros-Marca">
-                <h3>Filtrar por Marca</h3>
-                    <select id="filtroMarca" class="form-input">
-                        <option value="" selected>Mostrar todas las marcas</option>
-                    </select>
+            <div class="filtros-marca">
+                <label for="filtroMarca">Filtrar por Marca:</label>
+                <select id="filtroMarca" class="form-input">
+                    <option value="" selected>Mostrar todas las marcas</option>
+                </select>
             </div>
 
-            <div class="filtros-Precio">
-                <h3>Filtrar por Precio</h3>
+            <div class="filtros-precio">
+                <label>Filtrar por Precio:</label>
                 <div id="price-slider-container"></div>
+            </div>
+
+            <div class="filtros-acciones">
+                <button type="button" id="btnResetFiltros" class="btn-reset-filtros">
+                    <i class="fas fa-undo-alt"></i> Limpiar Filtros
+                </button>
             </div>
         </div>
         
@@ -193,12 +199,20 @@ const notifications = {
 // ============================================
 let categoriasData = [];
 let productosData = [];
+let marcasData = [];
 let filtroActual = {
     categoria: "",
     nombre: "",
     marca: "",
     precioMin: 0,
     precioMax: 2999
+};
+
+// Objeto para almacenar rangos de precios por categoría/marca
+let rangosPrecios = {
+    global: { min: 0, max: 2999 },
+    porCategoria: {},
+    porMarca: {}
 };
 
 // ============================================
@@ -250,6 +264,9 @@ fetch('../backend/LoadProd.php')
             });
         });
         
+        // Calcular rangos de precios
+        calcularRangosPrecios();
+        
         // Llenar el select de marcas
         llenarSelectMarcas();
         
@@ -268,6 +285,7 @@ function llenarSelectMarcas() {
     fetch('../backend/SELECTS/obtenerMarcas.php')
         .then(res => res.json())
         .then(marcas => {
+            marcasData = marcas;
             const selectMarca = document.getElementById('filtroMarca');
             
             marcas.forEach(marca => {
@@ -276,6 +294,9 @@ function llenarSelectMarcas() {
                 opt.textContent = marca.nombre;
                 selectMarca.appendChild(opt);
             });
+            
+            // Ahora que las marcas están cargadas, calcular sus rangos de precio
+            calcularRangosPorMarca();
         })
         .catch(error => {
             console.error('Error al cargar marcas:', error);
@@ -283,20 +304,318 @@ function llenarSelectMarcas() {
 }
 
 // ============================================
+// FUNCIÓN PARA CALCULAR RANGOS DE PRECIOS
+// ============================================
+function calcularRangosPrecios() {
+    // Calcular rango global
+    let minGlobal = Infinity;
+    let maxGlobal = -Infinity;
+    
+    productosData.forEach(prod => {
+        const precio = parseFloat(prod.precio);
+        if (precio < minGlobal) minGlobal = precio;
+        if (precio > maxGlobal) maxGlobal = precio;
+    });
+    
+    rangosPrecios.global = { 
+        min: Math.floor(minGlobal), 
+        max: Math.ceil(maxGlobal) 
+    };
+    
+    // Calcular rangos por categoría
+    categoriasData.forEach(cat => {
+        let minCat = Infinity;
+        let maxCat = -Infinity;
+        
+        cat.productos.forEach(prod => {
+            const precio = parseFloat(prod.precio);
+            if (precio < minCat) minCat = precio;
+            if (precio > maxCat) maxCat = precio;
+        });
+        
+        if (minCat !== Infinity && maxCat !== -Infinity) {
+            rangosPrecios.porCategoria[cat.id] = {
+                min: Math.floor(minCat),
+                max: Math.ceil(maxCat)
+            };
+        }
+    });
+    
+    // Solo calcular rangos por marca si marcasData está disponible
+    if (marcasData && marcasData.length > 0) {
+        calcularRangosPorMarca();
+    }
+    
+    console.log('Rangos de precios calculados:', rangosPrecios);
+}
+
+// ============================================
+// FUNCIÓN SEPARADA PARA CALCULAR RANGOS POR MARCA
+// ============================================
+function calcularRangosPorMarca() {
+    rangosPrecios.porMarca = {};
+    
+    marcasData.forEach(marca => {
+        let minMarca = Infinity;
+        let maxMarca = -Infinity;
+        
+        productosData
+            .filter(prod => prod.marca_id == marca.id)
+            .forEach(prod => {
+                const precio = parseFloat(prod.precio);
+                if (precio < minMarca) minMarca = precio;
+                if (precio > maxMarca) maxMarca = precio;
+            });
+        
+        if (minMarca !== Infinity && maxMarca !== -Infinity) {
+            rangosPrecios.porMarca[marca.id] = {
+                min: Math.floor(minMarca),
+                max: Math.ceil(maxMarca)
+            };
+        }
+    });
+    
+    console.log('Rangos por marca calculados:', rangosPrecios.porMarca);
+}
+
+// ============================================
+// FUNCIÓN PARA ACTUALIZAR SLIDER DE PRECIOS
+// ============================================
+function actualizarSliderPrecios(tipo, id = null) {
+    let rango;
+    
+    if (tipo === 'categoria' && id) {
+        rango = rangosPrecios.porCategoria[id] || rangosPrecios.global;
+    } else if (tipo === 'marca' && id) {
+        rango = rangosPrecios.porMarca[id] || rangosPrecios.global;
+    } else {
+        rango = rangosPrecios.global;
+    }
+    
+    // Actualizar el slider de precios si existe
+    if (window.priceSlider) {
+        window.priceSlider.updateRange(rango.min, rango.max);
+    }
+    
+    // Actualizar filtro actual
+    filtroActual.precioMin = rango.min;
+    filtroActual.precioMax = rango.max;
+    
+    console.log(`Slider actualizado para ${tipo}:`, rango);
+}
+
+// ============================================
+// FUNCIÓN PARA FILTRAR MARCAS POR CATEGORÍA
+// ============================================
+function filtrarMarcasPorCategoria(categoriaId) {
+    const selectMarca = document.getElementById('filtroMarca');
+    
+    // Limpiar opciones actuales (excepto la primera)
+    while (selectMarca.children.length > 1) {
+        selectMarca.removeChild(selectMarca.lastChild);
+    }
+    
+    if (!categoriaId) {
+        // Si no hay categoría seleccionada, mostrar todas las marcas
+        if (marcasData && marcasData.length > 0) {
+            marcasData.forEach(marca => {
+                const opt = document.createElement('option');
+                opt.value = marca.id;
+                opt.textContent = marca.nombre;
+                selectMarca.appendChild(opt);
+            });
+        }
+        return;
+    }
+    
+    // Buscar la categoría específica
+    const categoria = categoriasData.find(cat => cat.id == categoriaId);
+    if (!categoria) {
+        console.warn('Categoría no encontrada:', categoriaId);
+        return;
+    }
+    
+    // Obtener marcas únicas de los productos en esta categoría
+    const marcasEnCategoria = new Set();
+    categoria.productos.forEach(prod => {
+        if (prod.marca_id) {
+            marcasEnCategoria.add(parseInt(prod.marca_id));
+        }
+    });
+    
+    console.log('Marcas encontradas en categoría:', Array.from(marcasEnCategoria));
+    
+    // Agregar solo las marcas que tienen productos en esta categoría
+    if (marcasData && marcasData.length > 0) {
+        marcasData
+            .filter(marca => marcasEnCategoria.has(parseInt(marca.id)))
+            .forEach(marca => {
+                const opt = document.createElement('option');
+                opt.value = marca.id;
+                opt.textContent = marca.nombre;
+                selectMarca.appendChild(opt);
+            });
+    }
+}
+
+// ============================================
+// FUNCIÓN PARA FILTRAR CATEGORÍAS POR MARCA (Solo usar si no hay categoría seleccionada)
+// ============================================
+function filtrarCategoriasPorMarca(marcaId) {
+    // Esta función solo debe ejecutarse si no hay categoría seleccionada
+    if (filtroActual.categoria) {
+        return;
+    }
+    
+    const selectCategoria = document.getElementById('categoriaSelectLanding');
+    
+    // Limpiar opciones actuales (excepto la primera)
+    while (selectCategoria.children.length > 1) {
+        selectCategoria.removeChild(selectCategoria.lastChild);
+    }
+    
+    if (!marcaId) {
+        // Si no hay marca seleccionada, mostrar todas las categorías
+        if (categoriasData && categoriasData.length > 0) {
+            categoriasData.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.id;
+                opt.textContent = cat.nombre;
+                selectCategoria.appendChild(opt);
+            });
+        }
+        return;
+    }
+    
+    // Filtrar categorías que tengan productos de esta marca
+    const categoriasConMarca = new Set();
+    
+    productosData
+        .filter(prod => prod.marca_id == marcaId)
+        .forEach(prod => {
+            categoriasConMarca.add(parseInt(prod.categoria_id));
+        });
+    
+    console.log('Categorías con la marca seleccionada:', Array.from(categoriasConMarca));
+    
+    // Agregar solo las categorías que tienen productos de esta marca
+    if (categoriasData && categoriasData.length > 0) {
+        categoriasData
+            .filter(cat => categoriasConMarca.has(parseInt(cat.id)))
+            .forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.id;
+                opt.textContent = cat.nombre;
+                selectCategoria.appendChild(opt);
+            });
+    }
+}
+
+// ============================================
+// FUNCIÓN PARA RESETEAR TODOS LOS FILTROS
+// ============================================
+function resetearFiltros() {
+    console.log('Reseteando todos los filtros...');
+    
+    // Reset de valores de filtro
+    filtroActual = {
+        categoria: "",
+        nombre: "",
+        marca: "",
+        precioMin: rangosPrecios.global.min,
+        precioMax: rangosPrecios.global.max
+    };
+    
+    // Reset de controles de UI
+    document.getElementById('categoriaSelectLanding').value = "";
+    document.getElementById('filtroMarca').value = "";
+    document.getElementById('filtroNombre').value = "";
+    
+    // Restaurar todas las opciones de marcas (sin filtrar por categoría)
+    const selectMarca = document.getElementById('filtroMarca');
+    while (selectMarca.children.length > 1) {
+        selectMarca.removeChild(selectMarca.lastChild);
+    }
+    
+    // Recargar marcas desde el array original
+    if (marcasData && marcasData.length > 0) {
+        marcasData.forEach(marca => {
+            const opt = document.createElement('option');
+            opt.value = marca.id;
+            opt.textContent = marca.nombre;
+            selectMarca.appendChild(opt);
+        });
+    }
+    
+    // Restaurar todas las opciones de categorías
+    const selectCategoria = document.getElementById('categoriaSelectLanding');
+    while (selectCategoria.children.length > 1) {
+        selectCategoria.removeChild(selectCategoria.lastChild);
+    }
+    
+    // Recargar categorías desde el array original
+    if (categoriasData && categoriasData.length > 0) {
+        categoriasData.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.id;
+            opt.textContent = cat.nombre;
+            selectCategoria.appendChild(opt);
+        });
+    }
+    
+    // Reset del slider de precios al rango global
+    actualizarSliderPrecios('global');
+    
+    // Mostrar todos los productos usando la vista original
+    renderProductos();
+    
+    console.log('Filtros reseteados - mostrando todos los productos');
+}
+
+// ============================================
 // EVENT LISTENERS
 // ============================================
 document.getElementById('categoriaSelectLanding').addEventListener('change', function() {
+    console.log('Categoría seleccionada:', this.value);
     filtroActual.categoria = this.value;
+    
+    if (this.value) {
+        // Si se selecciona una categoría, limpiar filtro de marca para evitar conflictos
+        document.getElementById('filtroMarca').value = "";
+        filtroActual.marca = "";
+        
+        // Actualizar slider de precios según la categoría
+        actualizarSliderPrecios('categoria', this.value);
+        
+        // Filtrar marcas disponibles en esta categoría
+        filtrarMarcasPorCategoria(this.value);
+    } else {
+        // Si se deselecciona la categoría, restaurar todas las marcas
+        filtrarMarcasPorCategoria(null); // Esto restaurará todas las marcas
+        actualizarSliderPrecios('global');
+    }
+    
+    // Aplicar filtros
     aplicarFiltros();
 });
 
 document.getElementById('filtroNombre').addEventListener('input', function() {
+    console.log('Nombre ingresado:', this.value);
     filtroActual.nombre = this.value.toLowerCase();
     aplicarFiltros();
 });
 
 document.getElementById('filtroMarca').addEventListener('change', function() {
+    console.log('Marca seleccionada:', this.value);
     filtroActual.marca = this.value;
+    
+    if (this.value && !filtroActual.categoria) {
+        // Solo actualizar slider y filtrar categorías si no hay categoría seleccionada
+        actualizarSliderPrecios('marca', this.value);
+        filtrarCategoriasPorMarca(this.value);
+    }
+    
+    // Aplicar filtros
     aplicarFiltros();
 });
 
@@ -307,37 +626,137 @@ document.addEventListener('priceRangeChanged', function(e) {
     aplicarFiltros();
 });
 
-// ============================================
-// FUNCIÓN PARA APLICAR TODOS LOS FILTROS
-// ============================================
+// Event listener para el botón de reset
+document.getElementById('btnResetFiltros').addEventListener('click', function() {
+    resetearFiltros();
+});
+
 // ============================================
 // FUNCIÓN PARA APLICAR FILTROS
 // ============================================
 function aplicarFiltros() {
-    // Construir parámetros de búsqueda
+    // Si hay filtro de categoría activo, aplicar filtrado directo en frontend
+    if (filtroActual.categoria) {
+        aplicarFiltroPorCategoria();
+        return;
+    }
+    
+    // Si hay filtro de marca activo pero no de categoría, aplicar filtrado por marca
+    if (filtroActual.marca && !filtroActual.categoria) {
+        aplicarFiltroPorMarca();
+        return;
+    }
+    
+    // Para otros filtros (nombre, precio sin categoría/marca específica), usar backend
+    aplicarFiltroGeneral();
+}
+
+// ============================================
+// FUNCIÓN PARA FILTRO DIRECTO POR CATEGORÍA
+// ============================================
+function aplicarFiltroPorCategoria() {
+    console.log('Aplicando filtro directo por categoría:', filtroActual.categoria);
+    
+    // Encontrar la categoría seleccionada
+    const categoriaSeleccionada = categoriasData.find(cat => cat.id == filtroActual.categoria);
+    
+    if (!categoriaSeleccionada) {
+        console.error('Categoría no encontrada:', filtroActual.categoria);
+        return;
+    }
+    
+    // Filtrar productos de esa categoría específica
+    let productosFiltrados = [...categoriaSeleccionada.productos];
+    
+    // Aplicar filtros adicionales dentro de la categoría
+    if (filtroActual.nombre) {
+        productosFiltrados = productosFiltrados.filter(prod => 
+            prod.nombre.toLowerCase().includes(filtroActual.nombre) ||
+            (prod.descripcion && prod.descripcion.toLowerCase().includes(filtroActual.nombre))
+        );
+    }
+    
+    if (filtroActual.marca) {
+        productosFiltrados = productosFiltrados.filter(prod => 
+            prod.marca_id == filtroActual.marca
+        );
+    }
+    
+    // Filtrar por precio
+    productosFiltrados = productosFiltrados.filter(prod => {
+        const precio = parseFloat(prod.precio);
+        return precio >= filtroActual.precioMin && precio <= filtroActual.precioMax;
+    });
+    
+    // Renderizar solo esta categoría con sus productos filtrados
+    const categoriaParaRender = [{
+        id: categoriaSeleccionada.id,
+        nombre: categoriaSeleccionada.nombre,
+        imagen: categoriaSeleccionada.imagen,
+        productos: productosFiltrados
+    }];
+    
+    console.log(`Mostrando ${productosFiltrados.length} productos de la categoría "${categoriaSeleccionada.nombre}"`);
+    renderProductosFiltrados(categoriaParaRender);
+}
+
+// ============================================
+// FUNCIÓN PARA FILTRO DIRECTO POR MARCA
+// ============================================
+function aplicarFiltroPorMarca() {
+    console.log('Aplicando filtro directo por marca:', filtroActual.marca);
+    
+    // Filtrar todos los productos por marca
+    let productosFiltrados = productosData.filter(prod => prod.marca_id == filtroActual.marca);
+    
+    // Aplicar filtros adicionales
+    if (filtroActual.nombre) {
+        productosFiltrados = productosFiltrados.filter(prod => 
+            prod.nombre.toLowerCase().includes(filtroActual.nombre) ||
+            (prod.descripcion && prod.descripcion.toLowerCase().includes(filtroActual.nombre))
+        );
+    }
+    
+    // Filtrar por precio
+    productosFiltrados = productosFiltrados.filter(prod => {
+        const precio = parseFloat(prod.precio);
+        return precio >= filtroActual.precioMin && precio <= filtroActual.precioMax;
+    });
+    
+    console.log(`Mostrando ${productosFiltrados.length} productos de la marca seleccionada`);
+    renderProductos(productosFiltrados);
+}
+
+// ============================================
+// FUNCIÓN PARA FILTRO GENERAL (BACKEND)
+// ============================================
+function aplicarFiltroGeneral() {
+    // Construir parámetros de búsqueda para el backend
     const params = new URLSearchParams();
     
     if (filtroActual.nombre) {
         params.append('nombre', filtroActual.nombre);
     }
     
-    if (filtroActual.categoria) {
-        params.append('categoria_id', filtroActual.categoria);
-    }
-    
-    if (filtroActual.marca) {
-        params.append('marca_id', filtroActual.marca);
-    }
-    
     params.append('precio_min', filtroActual.precioMin);
     params.append('precio_max', filtroActual.precioMax);
     
+    // Debugging
+    console.log('Aplicando filtro general con parámetros:', {
+        nombre: filtroActual.nombre,
+        precio_min: filtroActual.precioMin,
+        precio_max: filtroActual.precioMax
+    });
+    
     // Hacer consulta al backend
     const url = `../backend/CONSULTA/buscarProductos.php?${params.toString()}`;
+    console.log('URL de consulta:', url);
     
     fetch(url)
         .then(res => res.json())
         .then(data => {
+            console.log('Respuesta del servidor:', data);
+            
             if (data.error) {
                 notifications.show('Error en la búsqueda: ' + data.mensaje, 'error');
                 return;

@@ -4,9 +4,9 @@
 
 .price-slider-wrapper {
     padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
+    background: rgba(26, 26, 26, 0.95);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    border-radius: 12px;
     margin-top: 10px;
 }
 
@@ -17,23 +17,23 @@
     margin-bottom: 20px;
     font-weight: bold;
     font-size: 18px;
-    color: #333;
+    color: var(--text-primary, #ffffff);
 }
 
 .price-min, .price-max {
-    background: #007bff;
+    background: linear-gradient(135deg, var(--primary-color, #0066ff), var(--secondary-color, #00d4ff));
     color: white;
     padding: 8px 15px;
     border-radius: 20px;
     font-size: 16px;
     font-weight: 600;
-    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3);
 }
 
 .price-separator {
     margin: 0 15px;
     font-size: 20px;
-    color: #6c757d;
+    color: var(--text-secondary, #b0b0b0);
     font-weight: bold;
 }
 
@@ -49,7 +49,7 @@
     left: 0;
     right: 0;
     height: 6px;
-    background: #ddd;
+    background: rgba(255, 255, 255, 0.2);
     border-radius: 3px;
     transform: translateY(-50%);
 }
@@ -58,10 +58,11 @@
     position: absolute;
     top: 50%;
     height: 6px;
-    background: linear-gradient(90deg, #007bff, #0056b3);
+    background: linear-gradient(90deg, var(--primary-color, #0066ff), var(--secondary-color, #00d4ff));
     border-radius: 3px;
     transform: translateY(-50%);
     transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.4);
 }
 
 .slider-input {
@@ -83,18 +84,18 @@
     height: 18px;
     width: 18px;
     border-radius: 50%;
-    background: #007bff;
+    background: var(--primary-color, #0066ff);
     border: 2px solid white;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.4);
     cursor: pointer;
     pointer-events: auto;
     transition: all 0.3s ease;
 }
 
 .slider-input::-webkit-slider-thumb:hover {
-    background: #0056b3;
+    background: var(--secondary-color, #00d4ff);
     transform: scale(1.1);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.6);
 }
 
 .slider-input::-webkit-slider-thumb:active {
@@ -105,9 +106,9 @@
     height: 18px;
     width: 18px;
     border-radius: 50%;
-    background: #007bff;
+    background: var(--primary-color, #0066ff);
     border: 2px solid white;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.4);
     cursor: pointer;
     pointer-events: auto;
     transition: all 0.3s ease;
@@ -115,7 +116,7 @@
 }
 
 .slider-input::-moz-range-thumb:hover {
-    background: #0056b3;
+    background: var(--secondary-color, #00d4ff);
     transform: scale(1.1);
 }
 
@@ -140,7 +141,7 @@
 
 .price-input-group label {
     font-size: 12px;
-    color: #6c757d;
+    color: var(--text-secondary, #b0b0b0);
     margin-bottom: 5px;
     font-weight: 600;
     text-transform: uppercase;
@@ -150,23 +151,25 @@
 .manual-price-input {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 8px;
     text-align: center;
     font-size: 14px;
     transition: all 0.3s ease;
-    background: white;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary, #ffffff);
 }
 
 .manual-price-input:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    border-color: var(--accent-glow, #00d4ff);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .manual-price-input:invalid {
-    border-color: #ff6b6b;
-    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+    border-color: var(--danger-color, #ff4757);
+    box-shadow: 0 0 8px rgba(255, 71, 87, 0.3);
 }
 
 /* Animaciones */

@@ -28,6 +28,7 @@ try {
             p.precio,
             p.stock,
             p.imagen,
+            p.idMarca,
             m.nombMarca
         FROM CATEGORIA c
         INNER JOIN PRODUCTO p ON c.idCategoria = p.idCategoria
@@ -58,6 +59,10 @@ try {
     
     $sql .= " ORDER BY c.nombCategoria ASC, p.nombProducto ASC";
     
+    // Debug: Log de la consulta SQL y parámetros
+    error_log("SQL Query: " . $sql);
+    error_log("Parameters: " . print_r($params, true));
+    
     $stmt = $conn->prepare($sql);
     foreach ($params as $key => $value) {
         $stmt->bindValue($key, $value);
@@ -87,7 +92,8 @@ try {
             'precio' => floatval($row['precio']),
             'imagen' => $row['imagen'],
             'stock' => intval($row['stock']),
-            'marca' => $row['nombMarca']
+            'marca' => $row['nombMarca'],
+            'marca_id' => $row['idMarca']
         ];
     }
     

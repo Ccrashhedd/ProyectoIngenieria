@@ -244,6 +244,20 @@ class PriceSlider {
         this.updateDisplay();
         this.triggerFilterUpdate();
     }
+
+    // Método público para actualizar los rangos dinámicamente
+    updateRange(newMin, newMax) {
+        this.minPrice = newMin;
+        this.maxPrice = newMax;
+        this.currentMin = newMin;
+        this.currentMax = newMax;
+        
+        // Recrear el slider con los nuevos valores
+        this.createSliderHTML();
+        this.bindEvents();
+        this.updateDisplay();
+        this.triggerFilterUpdate();
+    }
 }
 
 // Inicializar el slider cuando se cargue la página
