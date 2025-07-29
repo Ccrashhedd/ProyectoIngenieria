@@ -61,6 +61,25 @@
     animation: modalContentSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     border: 1px solid var(--border-color);
     color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Contenido scrolleable para modales sin estructura header/body */
+.custom-modal .modal-content > form,
+.custom-modal .modal-content > div:not(.form-actions) {
+    overflow-y: auto;
+    flex: 1;
+    padding: 20px 24px 0;
+}
+
+.custom-modal .modal-content h3 {
+    margin: 20px 24px 16px;
+    padding-right: 40px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+    flex-shrink: 0;
 }
 
 @keyframes modalBackdropFadeIn {
@@ -228,14 +247,12 @@
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-    margin-top: 24px;
+    margin-top: 0;
     padding: 20px 24px;
     border-top: 1px solid var(--border-color);
     background-color: var(--footer-bg);
-    margin-left: -24px;
-    margin-right: -24px;
-    margin-bottom: -24px;
     border-radius: 0 0 var(--modal-border-radius) var(--modal-border-radius);
+    flex-shrink: 0;
 }
 
 .custom-modal .btn {
@@ -415,6 +432,17 @@
         width: 95%;
         margin: 20px 10px;
         max-height: 90vh;
+    }
+    
+    .custom-modal .modal-content > form,
+    .custom-modal .modal-content > div:not(.form-actions) {
+        padding: 16px 20px 0;
+        max-height: calc(90vh - 120px);
+    }
+    
+    .custom-modal .modal-content h3 {
+        margin: 16px 20px 12px;
+        font-size: 16px;
     }
     
     .modal-header {
